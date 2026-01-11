@@ -1,5 +1,8 @@
 import { Metadata } from "next"
 import { getVideos } from "@/lib/content/content-service"
+
+// Force dynamic rendering to avoid database calls during static build
+export const dynamic = 'force-dynamic'
 import { ContentCard } from "@/components/content/content-card"
 import { Badge } from "@/components/ui/badge"
 import Link from "next/link"
