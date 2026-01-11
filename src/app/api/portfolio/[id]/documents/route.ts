@@ -242,9 +242,9 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
     // Sanitize filename to prevent path traversal and injection attacks
     const sanitizedFilename = sanitizeFilename(file.name)
 
-    // Upload to Vercel Blob with private access (requires signed URLs for download)
+    // Upload to Vercel Blob with public access (URL includes random suffix for security)
     const blob = await put(`documents/${session.user.id}/${portfolioId}/${sanitizedFilename}`, file, {
-      access: "private",
+      access: "public",
       addRandomSuffix: true,
     })
 
