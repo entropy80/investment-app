@@ -3,6 +3,9 @@ import { notFound } from "next/navigation"
 import { getServerSession } from "next-auth"
 import { authOptions } from "@/lib/auth"
 import { getArticleBySlug } from "@/lib/content/content-service"
+
+// Force dynamic rendering to avoid database calls during static build
+export const dynamic = 'force-dynamic'
 import { canAccessContent, getContentPreview } from "@/lib/content/access"
 import { MDXRenderer } from "@/components/content/mdx-renderer"
 import { TierGate } from "@/components/content/tier-gate"

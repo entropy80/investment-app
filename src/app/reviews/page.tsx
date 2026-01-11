@@ -1,5 +1,8 @@
 import { Metadata } from "next"
 import { getBrokerReviews } from "@/lib/content/content-service"
+
+// Force dynamic rendering to avoid database calls during static build
+export const dynamic = 'force-dynamic'
 import { Card, CardContent, CardFooter, CardHeader } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Star, Lock } from "lucide-react"
