@@ -1,0 +1,454 @@
+# Changelog
+
+All notable changes to the Investment App are documented here. Entries are ordered newest first.
+
+---
+
+## 2026-01-09
+- **Password Reset (Phase 2: Custom Email)**
+  - Forgot password page at `/auth/forgot-password`
+  - Reset password page at `/auth/reset-password` with token validation
+  - Password reset email template with branded styling
+  - Secure token generation (32-byte random hex)
+  - 1-hour token expiration with automatic cleanup
+  - Prevents email enumeration (always returns success)
+  - Database: `PasswordResetToken` model with email and token indexes
+  - Files: `src/app/auth/forgot-password/page.tsx`, `src/app/auth/reset-password/page.tsx`, `src/app/api/auth/forgot-password/route.ts`, `src/app/api/auth/reset-password/route.ts`, `src/lib/email/email-service.ts`
+- **Vercel Migration (Phase 1: Vercel Migration)**
+  - Migrated application hosting from self-hosted Debian VM to Vercel
+  - Migrated database from local PostgreSQL to Neon serverless PostgreSQL
+  - Production URL unchanged: https://investment-app.com
+  - DNS configured via Cloudflare pointing to Vercel
+  - Zero-cost deployment using Vercel Hobby and Neon Free tiers
+  - Files: `vercel.json`, `prisma/schema.prisma`, `package.json`, `tsconfig.json`
+- **Prisma Configuration for Neon**
+  - Added `directUrl` to Prisma datasource for Neon connection pooling
+  - `DATABASE_URL` uses pooled connection for app queries
+  - `DIRECT_URL` uses direct connection for migrations
+  - File: `prisma/schema.prisma`
+- **Vercel Build Configuration**
+  - Created `vercel.json` with build command: `pnpm prisma generate && pnpm build`
+  - Added `postinstall` script to `package.json` for Prisma client generation
+  - Excluded `prisma/` and `scripts/` folders from TypeScript compilation to fix build errors
+  - Files: `vercel.json`, `package.json`, `tsconfig.json`
+- **Environment Configuration Updates**
+  - Updated `.env.example` with Neon database variables and Vercel-specific settings
+  - Added `DIRECT_URL`, `CRON_SECRET`, and Vercel Blob storage variables
+  - Local development continues to use localhost PostgreSQL
+  - File: `.env.example`
+- **Documentation Updates**
+  - Updated `docs/upcoming_phases.md` to mark Vercel Migration as completed
+  - Updated `docs/csv-parsing/roadmap.md` to reflect implemented bank parsers
+  - Updated `docs/csv-parsing/existing-parsers.md` with new parser list
+  - Files: `docs/upcoming_phases.md`, `docs/csv-parsing/roadmap.md`, `docs/csv-parsing/existing-parsers.md`
+- **Demo User and Currency Seeding**
+  - Seeded demo user on Neon production database
+  - Seeded currencies (USD, EUR, GBP, CHF, KWD) and exchange rates
+  - Demo mode functional at https://investment-app.com/demo
+
+## 2026-01-08
+- **Auto Refresh - Scheduled Price Updates (Phase 3: Auto Refresh)**
+  - New cron API endpoint for scheduled price refresh
+  - Batch price refresh service that processes all portfolios efficiently
+  - Rate-limited processing to respect API limits (2s delay between accounts)
+  - Prioritizes portfolios that haven't been refreshed recently
+  - Price status indicator showing when prices were last updated
+  - Visual status levels: fresh (green, < 4 hours), stale (yellow, < 24 hours), warning (red, > 24 hours)
+  - Tooltip with exact timestamp on hover
+  - lastPriceRefresh field added to Portfolio model for tracking
+  - API endpoint: `GET /api/cron/refresh-prices` (protected by CRON_SECRET)
+  - Files: `src/lib/prices/batch-refresh.ts`, `src/app/api/cron/refresh-prices/route.ts`, `src/components/portfolio/price-status.tsx`
+- **Historical Charts - Portfolio Performance Over Time (Phase 2: Historical Charts)**
+  - New PortfolioSnapshot model for storing daily portfolio valuations
+  - Performance chart component with period selector (1M, 3M, 6M, 1Y, YTD, ALL)
+  - Interactive line chart with Recharts showing portfolio value over time
+  - Gradient fill indicating positive (green) or negative (red) performance
+  - Tooltip showing date, total value, and gain/loss
+  - Period performance summary with percentage and absolute change
+  - Create snapshot button for manual snapshots
+  - API endpoint: `GET /api/portfolio/[id]/history?period=1Y`
+  - Backfill script: `node scripts/backfill-snapshots.mjs <portfolio-id>`
+  - Files: `src/lib/portfolio/snapshot-service.ts`, `src/components/portfolio/performance-chart.tsx`, `src/app/api/portfolio/[id]/history/route.ts`
+- **Tax Reports - Form 8949 and Schedule D (Phase 1: Tax Reports)**
+  - New Tax Reports tab on portfolio detail page
+  - Generate IRS Form 8949 from realized gains data
+  - Part I: Short-term capital gains (held 1 year or less)
+  - Part II: Long-term capital gains (held more than 1 year)
+  - Schedule D summary with line-by-line breakdown
+  - CSV export compatible with TurboTax/H&R Block import
+  - Year selector with auto-detection of years with data
+  - Summary cards showing short-term, long-term, and total gains
+  - Transaction detail tables with proceeds, cost basis, and gain/loss
+  - API endpoint: `GET /api/portfolio/[id]/tax-report?year=2025&format=json|csv`
+  - Files: `src/lib/tax/`, `src/components/tax/`, `src/app/api/portfolio/[id]/tax-report/route.ts`
+- **Bank Account Summary - Income vs Expenses (Phase 1: Bank Statement Import)**
+  - New BankSummary component showing income, expenses, net cash flow, and savings rate
+  - Top expenses bar chart using Recharts with category breakdown
+  - Income sources breakdown with category tags
+  - Displays on Transactions tab when bank transactions exist
+  - New analytics API endpoint: `GET /api/portfolio/[id]/analytics?type=bank_summary`
+  - Aggregates bank transactions by TransactionCategory enum
+  - Files: `src/components/portfolio/bank-summary.tsx`, `src/lib/portfolio/analytics.ts`
+- **Transaction Category Filter (Phase 1: Bank Statement Import)**
+  - Added category dropdown to transaction filters with 29 categories
+  - Categories include: Salary, Rental Income, Groceries, Dining, Utilities, Subscriptions, etc.
+  - Filter persists across pagination
+  - Updated transactions API to support `category` query parameter
+  - Files: `src/app/(dashboard)/dashboard/portfolio/[id]/page.tsx`, `src/app/api/portfolio/[id]/transactions/route.ts`, `src/lib/portfolio/portfolio-service.ts`
+- **Bank of America Parser (Phase 1: Bank Statement Import)**
+  - New parser for Bank of America checking/savings CSV files
+  - Auto-detection of BOA format via summary section and header inspection
+  - Date format: MM/DD/YYYY (US format)
+  - Handles quoted amounts with commas (e.g., `"-3,650.00"`)
+  - Uses "Beginning balance" row directly for opening balance (no calculation needed)
+  - Transaction type mapping: WIRE TYPE:WIRE OUT → TRANSFER_OUT, WIRE TYPE:INTL IN → TRANSFER_IN, TRANSFER...Confirmation# → TRANSFER_OUT (Zelle), SCHWAB/INTERACTIVE BROK → TRANSFER_OUT (brokerage)
+  - Skips $0.00 fee waiver entries
+  - Summary section (first 5 rows) properly skipped during parsing
+  - Added "Bank of America" option to broker format dropdown
+  - Files: `src/lib/import/parsers/bofa.ts`
+- **Duplicate Detection Fix for Bank Transactions**
+  - Fixed issue where bank transactions with similar amounts (within $0.01) on the same day were incorrectly flagged as duplicates
+  - Problem: $-19.99 matched $-20.00, $-19.98 matched $-19.99 due to ±0.01 tolerance
+  - Solution: Skip composite key check for bank transactions (symbol is null), rely only on external ID
+  - External ID includes full description and running balance, ensuring uniqueness
+  - File: `src/lib/import/dedupe.ts`
+- **NBK (Kuwait) Bank Parser (Phase 1: Bank Statement Import)**
+  - New parser for National Bank of Kuwait savings/checking CSV files
+  - Auto-detection of NBK format via header inspection
+  - Date format: DD-MM-YYYY (Kuwait format)
+  - Currency: KWD with 3 decimal places
+  - Transaction type mapping: Debit-NBK Transfer → TRANSFER_OUT, Credit Int → INTEREST, Debit-Bank Transfer → TRANSFER_OUT (SWIFT), etc.
+  - Opening balance calculation for partial statement history
+  - Pipe-delimited Details field parsing for purpose and counterparty extraction
+  - Added "NBK (Kuwait)" option to broker format dropdown
+  - Files: `src/lib/import/parsers/nbk.ts`
+- **Chase Bank Parser (Phase 1: Bank Statement Import)**
+  - New parser for Chase checking/savings CSV files
+  - Auto-detection of Chase format via header inspection
+  - Transaction type mapping: ACH_DEBIT → WITHDRAWAL, WIRE_INCOMING → TRANSFER_IN, FEE_TRANSACTION → FEE, etc.
+  - **Opening balance calculation**: Extracts final balance from CSV, calculates implied opening balance, creates adjustment transaction
+  - Solves partial history issue where bank statements don't include complete transaction history
+  - Auto-categorization with 35+ merchant patterns (Netflix → STREAMING, Costco → GROCERIES, Amazon Prime → MEMBERSHIPS)
+  - Recurring transaction detection for subscriptions and utilities
+  - Merchant name extraction from transaction descriptions
+  - Added "Chase Bank" option to broker format dropdown in Import CSV dialog
+  - Fixed Import CSV dialog width issue: CSV preview now constrained with horizontal scroll
+  - Files: `src/lib/import/parsers/chase-bank.ts`, `src/lib/import/types.ts`, `src/lib/import/service.ts`
+
+## 2026-01-07
+- **Document Storage (Phase 5)**
+  - Portfolio-scoped file storage for tax forms, statements, and imported CSVs
+  - New "Documents" tab on portfolio detail page
+  - Upload dialog with category selection, year, display name, and notes
+  - Supported file types: PDF, PNG, JPG, CSV (max 10MB)
+  - Document categories: Tax documents (1099-DIV, 1099-INT, 1099-B, K-1, Summary), Statements (Monthly, Quarterly, Annual), Proof of Funds, Imported CSV, Other
+  - Vercel Blob storage backend with presigned URLs
+  - API routes: `/api/portfolio/[id]/documents`, `/api/portfolio/[id]/documents/[docId]`
+  - New files: `src/components/documents/`, `src/components/ui/alert-dialog.tsx`
+  - Added `@vercel/blob` v2.0.0 and `@radix-ui/react-alert-dialog` dependencies
+  - Database: `Document` model with `DocumentCategory` enum
+- **Separate Cash Holdings Table (Phase 3)**
+  - Holdings tab now displays securities and cash in separate tables
+  - Securities table shows stocks, ETFs, crypto with Qty/Price/Value/Gain columns
+  - Cash Holdings table shows Currency, Balance, Value (converted), Account
+  - Proper currency conversion using standard exchange rate pattern
+  - Empty state handling: "No securities holdings" message when only cash exists
+  - Cash section hidden when no cash holdings present
+  - File: `src/app/(dashboard)/dashboard/portfolio/[id]/page.tsx`
+- **Portfolio Visualization (Phase 2)**
+  - Replaced 4 summary cards with unified visualization component
+  - Asset Allocation donut chart using Recharts library
+  - Portfolio Breakdown summary (Invested Capital, Gain/Loss, Securities Value, Cash Holdings, Total)
+  - Responsive layout: side-by-side on desktop, stacked on mobile
+  - Supports currency conversion display with secondary USD values
+  - Loading skeleton state for improved UX
+  - New files: `src/components/portfolio/` (6 components), `src/lib/chart-colors.ts`
+  - Added `recharts` v3.6.0 dependency
+
+## 2026-01-06
+- **2FA account lockout after failed attempts**
+  - Locks account after 5 failed 2FA verification attempts
+  - 15-minute lockout duration before retry allowed
+  - Returns 423 Locked status with remaining seconds
+  - Shows attempts remaining on invalid code response
+  - Clears failed attempts on successful verification
+  - File: `src/lib/auth/twofa-service.ts`
+- **Password complexity requirements**
+  - Passwords must now contain: 8+ chars, uppercase, lowercase, number, special char
+  - Returns descriptive error listing missing requirements
+  - File: `src/app/api/register/route.ts`
+- **CSV import file size limit**
+  - Added 10MB max file size validation
+  - Returns 413 status with descriptive error if exceeded
+  - File: `src/app/api/portfolio/import/route.ts`
+- **Reorganized docs directory structure**
+  - Created subdirectories: `api/`, `csv-parsing/`, `deployment/`, `security/`, `maintenance/`
+  - Moved API docs to `api/` (currency-model, price-api-research)
+  - Moved CSV parser docs to `csv-parsing/` (roadmap, existing-parsers, schwab-analysis, spreadsheet-analysis)
+  - Moved deployment docs to `deployment/` (migration-vercel-neon)
+  - Moved security docs to `security/` (security-practices)
+  - Moved maintenance docs to `maintenance/` (dependency-audit)
+  - Renamed `security-audit.md` to `security-practices.md` as ongoing reference guide
+  - Removed `csv_files/` sample directory (no longer needed)
+  - Updated `CLAUDE.md` with documentation structure reference
+
+## 2026-01-05
+- **Demo user budget data for 2026**
+  - Updated `scripts/seed-demo-user.mjs` to include budget data
+  - Creates 44 budget categories (7 parent groups + 37 subcategories)
+  - Creates 444 budget items (12 months × 37 categories)
+  - Realistic monthly amounts: Income $10,850, Expenses $5,636
+  - Demo users can now view the Budget page with sample data
+- **Security headers in Next.js config**
+  - Added 7 security headers to `next.config.ts`
+  - X-Frame-Options: DENY (prevents clickjacking)
+  - X-Content-Type-Options: nosniff (prevents MIME sniffing)
+  - Strict-Transport-Security: 1 year with subdomains (forces HTTPS)
+  - X-XSS-Protection: enabled with block mode
+  - Referrer-Policy: strict-origin-when-cross-origin
+  - Permissions-Policy: disables camera, microphone, geolocation
+  - Addresses security audit finding for missing headers
+- **Rate limiting on auth endpoints**
+  - Added `withRateLimit()` helper and `getClientIp()` to `src/lib/rate-limit/rate-limiter.ts`
+  - `/api/register`: 3 requests per hour per IP
+  - `/api/auth/2fa/setup`: 10 requests per minute per user
+  - `/api/auth/2fa/enable`: 10 requests per minute per user
+  - `/api/auth/2fa/disable`: 10 requests per minute per user
+  - Returns 429 status with `Retry-After` header when limit exceeded
+  - Addresses security audit finding for brute force protection
+- **Budget Tracking feature**
+  - Added `/dashboard/budget` page with spreadsheet-style UI
+  - Pre-populated template with 7 category groups and 35 subcategories
+  - Year selector, collapsible category groups, inline editable cells
+  - Auto-calculated totals per row, category, and summary section
+  - API endpoints: GET/POST `/api/budget`, PATCH `/api/budget/item`
+  - Files: `src/lib/budget/`, `src/app/api/budget/`, `src/components/budget/`
+- **Database schema: Transaction categories and budget tracking**
+  - Added `TransactionCategory` enum with 40 values (Income, Home, Transportation, Health, Daily Living, Subscriptions, Misc, Transfers)
+  - Added 6 new fields to `PortfolioTransaction`: `category`, `subcategory`, `merchant`, `isRecurring`, `recurringPattern`, `categorySource`
+  - Created `BudgetCategory` model for hierarchical user budget categories
+  - Created `BudgetItem` model for monthly budget amounts per category
+  - Created `CategoryMapping` model to link transaction categories to budget categories
+  - Created `MerchantRule` model for auto-categorization patterns (system + user rules)
+  - Migration: `20260105085124_add_transaction_categories_and_budget_tracking`
+- Added tooltip to currency dropdown explaining display preference
+  - Added Radix UI tooltip component (`src/components/ui/tooltip.tsx`)
+  - Changed label from "Currency:" to "Display:" with info icon
+  - Tooltip text: "Display preference only. All values are calculated in USD internally, then converted for display."
+- Consolidated currency documentation into single reference
+  - Merged `conceptual_currency_model.md`, `currency_system_analysis.md`, and `currency_ui_and_csv_analysis.md` into `currency-model.md`
+  - Document covers: database schema, design rationale, exchange rate system, value calculation flow, UI best practices, debugging guide
+  - Removed redundant documentation files
+- Rewrote `docs/upcoming_phases.md` with bank statement import research
+  - Phase 1: Bank Statement Import - Chase and NBK CSV format research with parser notes
+  - Phase 4: Budget Tracking - Schema design, CSV import parser, comparison views
+  - Added edge case handling for NBK SWIFT transfers with unquoted commas
+
+## 2026-01-02
+- Redesigned landing page with demo-first layout
+  - Split hero section: headline/CTA on left, portfolio preview mockup on right
+  - Added interactive portfolio mockup showing sample holdings, values, and currencies
+  - Consolidated 13 cards across 4 sections into compact 3-step benefits (Import → Track → Analyze)
+  - Added trust signals: "Free forever", "No credit card", "Your data stays private"
+  - Added "Built for" audience badges: Expats, Digital Nomads, DIY Investors, Global Diversifiers
+  - Added feature stats section: 5 currencies, 2 broker imports, FIFO tracking, Free
+  - Removed redundant "Featured Content" section (already in navbar Resources dropdown)
+  - Demo CTA is now primary action throughout the page
+  - File: `src/app/page.tsx`
+- Redesigned features page with product-first layout
+  - Hero section with demo CTA matching landing page style
+  - Portfolio Management: Multiple Portfolios, Multiple Accounts, Multi-Currency Support, All Asset Types
+  - Data Import: CSV import with broker badges (Schwab, IBKR), feature checklist
+  - Tracking & Analytics: Real-Time Prices, Allocation Breakdown, Unrealized/Realized Gains
+  - Tax Lot Tracking: FIFO Method, Holding Period, Cost Basis, Acquisition Date
+  - Coming Soon section: Historical Charts, Auto Refresh, Tax Reports
+  - Removed content-focused sections (articles, videos, reviews) - now in Resources dropdown
+  - File: `src/app/features/page.tsx`
+- Moved FAQ to dedicated page with accordion-style presentation
+  - Created new `/faq` page with collapsible Q&A sections grouped by category
+  - Categories: Getting Started, Security & Privacy, Features
+  - Added new questions: How to create portfolios, add accounts, add holdings, import from brokerages, demo mode
+  - Added `@radix-ui/react-accordion` for accessible collapsible components
+  - Removed FAQ section from landing page
+  - Added FAQ link to footer navigation
+  - Files: `src/app/faq/page.tsx`, `src/components/ui/accordion.tsx`, `src/components/navigation/footer.tsx`, `src/app/page.tsx`
+- Enhanced demo user seed script with realistic multi-currency data
+  - Added SELL transactions demonstrating realized gains: AAPL $730 long-term (488 days), MSFT $350 short-term (271 days)
+  - Updated CASH.USD balance to $9,705 (includes $4,705 sell proceeds)
+  - Added 3 new bank accounts with foreign currency cash: Saxo Bank (€10,000 EUR), Wise (CHF 15,000), Monzo (£20,000 GBP)
+  - Updated holdings after sells: AAPL 25→15 shares, MSFT 15→10 shares
+  - Tax lots now properly consumed via FIFO for SELL transactions
+  - Demo now has 5 accounts, 10 holdings, 16 transactions
+  - File: `scripts/seed-demo-user.mjs`
+- Redesigned header navigation with Resources dropdown
+  - **Unregistered users:** Try Portfolio Demo, Features, Resources (dropdown), About
+  - **Registered users:** Portfolio, Features, Resources (dropdown), About
+  - **Admin users:** Same as registered + Admin link
+  - Resources dropdown contains Articles, Videos, Reviews with icons and descriptions
+  - Added `@radix-ui/react-navigation-menu` for accessible dropdown support
+  - Created `DashboardNavbar` client component for dashboard layout
+  - Updated mobile navigation to match new structure with collapsible Resources section
+  - Files: `src/components/navigation/navbar.tsx`, `src/components/navigation/dashboard-navbar.tsx`, `src/components/navigation/mobile-nav.tsx`, `src/components/ui/navigation-menu.tsx`
+- Removed Articles, Reviews, Features from footer (now in Resources dropdown)
+  - Footer now only shows: About, Acknowledgments
+  - File: `src/components/navigation/footer.tsx`
+- Dependency updates and audit
+  - **Next.js 16.1.0 → 16.1.1** - Security patch for CVE-2025-55184 and CVE-2025-55183
+  - **React 19.2.0 → 19.2.3** - Patch updates
+  - **lucide-react 0.554.0 → 0.562.0** - New icons
+  - **TypeScript** - Confirmed already at 5.9.3 (^5 range resolves to latest)
+  - **Prisma 7 migration deferred** - Breaking changes documented (generator provider, output path, driver adapters, ES modules, config file, env vars)
+  - Added comprehensive dependency audit report: `docs/dependency-audit-jan-2026.md`
+- Rewrote currency system documentation as development reference
+  - Complete restructure covering: currency hierarchy, database design, exchange rates, server/client calculations, UI patterns, debugging, development patterns
+  - File: `docs/currency-model.md`
+- Added max-width to Holdings table Name column for better layout
+  - File: `src/app/(dashboard)/dashboard/portfolio/[id]/page.tsx`
+- Account cards now respect portfolio display currency selection
+  - **Primary display:** Account values converted to portfolio's baseCurrency
+  - **Secondary display:** Original values in account's native currency (smaller text below)
+  - Individual holdings in expanded view also show converted values with native currency below
+  - Matches behavior of main summary cards (Total Value, Cost Basis, etc.)
+  - File: `src/app/(dashboard)/dashboard/portfolio/[id]/page.tsx`
+- Fixed account card currency conversion treating cash as USD
+  - **Root cause:** `calculateAccountSummary()` used stored `holding.currency` for cash holdings instead of extracting currency from symbol (e.g., CASH.KWD → KWD)
+  - **Symptom:** CASH.KWD holdings with `currency: 'USD'` in database were converted as if they were USD, showing ~29,000 KWD instead of 95,000 KWD
+  - **Code fix:** Now extracts cash currency from symbol like `displaySummary` useMemo does
+  - **Data fix:** Updated all CASH.XXX holdings to have correct currency matching their symbol
+  - File: `src/app/(dashboard)/dashboard/portfolio/[id]/page.tsx`
+- Redesigned Accounts tab with accordion-style summary cards
+  - **Collapsed view:** Clean summary cards showing account name, currency badge, total value, gain/loss with trend icons, and holdings count
+  - **Expanded view:** Click pencil icon to reveal holdings list with individual delete buttons
+  - **UX improvements:** Delete account button only visible when expanded, smooth slide-in animations
+  - Added `expandedAccounts` state with `toggleAccountExpanded` function
+  - Added `calculateAccountSummary()` helper for account-level totals (value, gain/loss, holding count)
+  - Styling matches portfolio summary cards on `/dashboard/portfolio`
+  - File: `src/app/(dashboard)/dashboard/portfolio/[id]/page.tsx`
+
+## 2026-01-01
+- Fixed REAL_ESTATE holdings showing incorrect gain/loss
+  - Non-priceable assets (REAL_ESTATE, OTHER, COMMODITY) had NULL `avgCostPerUnit`, causing `currentValue = 0` and showing false losses
+  - Updated Add Holding form to set `avgCostPerUnit = costBasis` for non-priceable assets
+  - Fixed existing REAL_ESTATE holdings in database
+  - File: `src/app/(dashboard)/dashboard/portfolio/[id]/page.tsx`
+- Fixed multi-currency conversion for non-priceable assets (major bug fix)
+  - **Root cause:** Server and client assumed all values were in USD, but non-priceable assets store `avgCostPerUnit` and `costBasis` in the holding's currency
+  - **Server fix:** `getPortfolioSummary()` now converts non-API-priced holdings from holding currency to USD
+  - **Client fix:** `displaySummary` useMemo now correctly converts fallback prices from holding currency to USD
+  - **Currency hierarchy:** Holding currency → Account currency → Portfolio base currency → Display currency
+  - Files: `src/lib/portfolio/portfolio-service.ts`, `src/app/(dashboard)/dashboard/portfolio/[id]/page.tsx`
+- Add Holding form now defaults to selected account's currency
+  - Previously defaulted to USD regardless of account currency
+  - Prevents currency mismatch when adding holdings to non-USD accounts
+  - File: `src/app/(dashboard)/dashboard/portfolio/[id]/page.tsx`
+- Investigated Cloud Student Homes data inconsistency
+  - Identified corrupted holding data (symbol: CASH.GBP with assetType: REAL_ESTATE)
+  - Documented that "Property Value" field maps to `costBasis` column, with `quantity` auto-set to 1
+  - User recreated holdings correctly through Add Holding form
+
+## 2025-12-31
+- Fixed currency conversion for Allocation tab and Realized Gains cards
+  - Allocation tab now properly converts values to portfolio's baseCurrency
+  - Added `assetAllocation` to `summary.converted` object in portfolio service
+  - Realized Gains cards now apply exchange rate for non-USD portfolios
+  - File: `src/lib/portfolio/portfolio-service.ts`, `src/app/(dashboard)/dashboard/portfolio/[id]/page.tsx`
+- Added comprehensive asset type validation and improved UX
+  - **CASH holdings:** Backend enforces `CASH.{CURRENCY}` format with currency code validation
+  - **CASH form:** Frontend shows currency dropdown instead of symbol input
+  - **CRYPTO:** Backend auto-strips "USD" suffix (e.g., BTCUSD → BTC)
+  - **REAL_ESTATE:** Redesigned form with "Property Identifier" field and dedicated layout
+  - **STOCK/ETF/MUTUAL_FUND/BOND:** Backend validates symbol format (letters, dots, hyphens only)
+  - **Non-priceable assets:** Warning banner for REAL_ESTATE, OTHER, COMMODITY
+  - **Price fetching:** Skips non-priceable asset types to avoid API errors
+  - Files: `src/app/api/portfolio/[id]/holdings/route.ts`, `src/app/(dashboard)/dashboard/portfolio/[id]/page.tsx`, `src/lib/prices/fmp-service.ts`
+- Added multi-currency support for CSV imports
+  - Import dialog now includes currency selector (defaults to USD)
+  - Schwab and IBKR parsers use provided currency instead of hardcoded USD
+  - Holdings created from imports use the transaction's currency
+  - Enables importing from multi-currency accounts (e.g., US brokerage + Kuwaiti brokerage)
+  - Files: `src/lib/import/types.ts`, `src/lib/import/parsers/schwab.ts`, `src/lib/import/parsers/ibkr.ts`, `src/lib/import/service.ts`, `src/app/api/portfolio/import/route.ts`
+- Added currency system analysis documentation
+  - `docs/currency-model.md` - Consolidated currency model reference
+- Fixed currency dropdown inconsistencies across dialogs
+  - Create Portfolio and Add Account dialogs now fetch currencies from database
+  - Removed hardcoded currency lists that included non-existent currencies (CAD, AUD, JPY)
+  - All dropdowns now consistently show the 5 database currencies: USD, EUR, GBP, CHF, KWD
+  - Files: `src/app/(dashboard)/dashboard/portfolio/page.tsx`, `src/app/(dashboard)/dashboard/portfolio/[id]/page.tsx`
+- Added reusable article seeding script for CLI-based content management
+  - Create articles from MDX files with frontmatter metadata
+  - Supports all article fields: title, excerpt, category, tags, tier, featured, coverImage
+  - Auto-generates slug from title and estimates read time
+  - Files: `scripts/seed-article.mjs`, `articles/_template.mdx`
+- Added CSV parser roadmap documentation for future development
+  - Research on preferred banks/brokerages for digital nomads and expats
+  - Priority list for future parser development (Wise, Revolut, Fidelity, etc.)
+  - File: `docs/CSV Parser Roadmap.md`
+- Temporarily hidden Videos and Reviews from navigation
+  - Links commented out until content is published
+  - Pages remain accessible via direct URL (`/videos`, `/reviews`)
+  - TODO comments added for easy re-enabling
+  - Files: `src/components/navigation/navbar.tsx`, `src/components/navigation/mobile-nav.tsx`
+- Redesigned About page with dedicated content
+  - Moved "About Investment-App" section from landing page to `/about`
+  - Added structured cards: Built with Claude Code, Data & Privacy, Credits
+  - Improved visual presentation with icons
+  - Files: `src/app/about/page.tsx`, `src/app/page.tsx`
+
+## 2025-12-29
+- Fixed JSON parsing crash when price APIs return HTML responses
+  - Added Content-Type header validation before parsing JSON
+  - Added try-catch around `response.json()` calls
+  - Prevents crashes from rate limit pages, maintenance pages, or captchas
+  - File: `src/lib/prices/fmp-service.ts`
+- Reduced Alpha Vantage delay from 12 sec to 5 sec
+  - Keeps total request time under nginx proxy timeout (60 sec)
+  - Delay now only applied between calls, not after the last symbol
+  - File: `src/lib/prices/fmp-service.ts`
+- Updated hero text from "A Pathway to Financial Freedom" to "A Pathway to Wealth"
+  - File: `src/app/page.tsx`
+- Discovered FMP `/stable/quote` endpoint requires premium subscription
+  - All price fetches now use Alpha Vantage fallback
+  - FMP API key still works for other endpoints
+
+## 2025-12-28
+- Added "About Investment-App" disclaimer section to landing page
+  - Informs users about data sharing with app creator and tool creators
+  - Placed below FAQ section
+  - File: `src/app/page.tsx`
+- Updated environment configuration for new domain
+  - Changed `NEXT_PUBLIC_APP_URL` and `NEXTAUTH_URL` from localhost to `https://investment-app.com`
+  - Fixes logout redirect issue
+  - Files: `.env.local`, `README.md`
+- Mobile optimization for portfolio detail page
+  - Header: Stacks vertically on mobile, buttons in 2-column grid
+  - Summary cards: 2 columns on mobile, 4 on desktop
+  - Tabs: Shortened labels on mobile (Acct, Alloc, Trans)
+  - Filter section: 2-column grid with full-width inputs
+  - Holdings table: Hides Name/Type/Account/Cost columns progressively
+  - Transactions table: Hides Account/Qty/Price/Cost/Days/Fees columns progressively
+  - Dialog forms: Stack to single column on mobile
+  - File: `src/app/(dashboard)/dashboard/portfolio/[id]/page.tsx`
+- Changed landing page headline from "Thrive Internationally" to "Diversify your assets."
+
+## 2025-12-27 (Night)
+- Fixed demo user bypassing content tier gating
+  - Demo users now treated as unauthenticated for content access
+  - AUTHENTICATED tier content shows login prompt for demo users
+  - Added `isDemo` parameter to `canAccessContent()` function
+  - Files: `src/lib/content/access.ts`, article/video/review slug pages
+- Added read-only demo mode for unregistered users
+  - Demo entry point: `GET /demo` creates session and redirects to demo portfolio
+  - Demo user with sample portfolio data (2 accounts, 7 holdings, 11 transactions)
+  - Demo guard blocks all write operations (POST/PATCH/DELETE) with 403 response
+  - Demo banner component with signup CTA on portfolio pages
+  - Files:
+    - `src/app/demo/route.ts` - Demo entry point
+    - `src/lib/demo/demo-guard.ts` - Demo detection and blocking utilities
+    - `src/components/demo/demo-banner.tsx` - UI banner component
+    - `scripts/seed-demo-user.mjs` - Demo data seeding script
+  - Run `node scripts/seed-demo-user.mjs` to create/reset demo user
+- Added `remark-gfm` plugin for GitHub Flavored Markdown support
+  - Enables proper table rendering in MDX content
+  - Tables now display correctly in articles and reviews
+  - File: `src/lib/content/mdx.tsx`
+  

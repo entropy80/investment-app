@@ -1,0 +1,793 @@
+// Prisma schema for Treviwise SaaS Platform
+// Database: PostgreSQL 17
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
+}
+
+// ============================================================================
+// Authentication Models (NextAuth v5)
+// ============================================================================
+
+model User {
+  id            String    @id @default(cuid())
+  name          String?
+  email         String    @unique
+  emailVerified DateTime?
+  image         String?
+  password      String?   // For credentials provider (hashed)
+  role          UserRole  @default(USER)
+  isDemo        Boolean   @default(false)  // Demo user flag (read-only access)
+
+  // 2FA fields
+  twoFactorEnabled Boolean @default(false)
+  twoFactorSecret  String?
+
+  // Relationships
+  accounts      Account[]
+  sessions      Session[]
+  notifications Notification[]
+  auditLogs     AuditLog[]
+
+  // Content relationships
+  articles      Article[]
+  videos        Video[]
+  brokerReviews BrokerReview[]
+
+  // Portfolio tracking relationships (Phase 4)
+  portfolios    Portfolio[]
+
+  // Document storage relationships (Phase 5)
+  documents     Document[]
+
+  // Budget tracking relationships
+  budgetCategories BudgetCategory[]
+  categoryMappings CategoryMapping[]
+  merchantRules    MerchantRule[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([email])
+  @@map("users")
+}
+
+model Account {
+  id                String  @id @default(cuid())
+  userId            String
+  type              String
+  provider          String
+  providerAccountId String
+  refresh_token     String? @db.Text
+  access_token      String? @db.Text
+  expires_at        Int?
+  token_type        String?
+  scope             String?
+  id_token          String? @db.Text
+  session_state     String?
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([provider, providerAccountId])
+  @@index([userId])
+  @@map("accounts")
+}
+
+model Session {
+  id           String   @id @default(cuid())
+  sessionToken String   @unique
+  userId       String
+  expires      DateTime
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@map("sessions")
+}
+
+model VerificationToken {
+  identifier String
+  token      String   @unique
+  expires    DateTime
+
+  @@unique([identifier, token])
+  @@map("verification_tokens")
+}
+
+model PasswordResetToken {
+  id        String   @id @default(cuid())
+  email     String
+  token     String   @unique
+  expires   DateTime
+  createdAt DateTime @default(now())
+
+  @@index([email])
+  @@index([token])
+  @@map("password_reset_tokens")
+}
+
+// ============================================================================
+// Notification System
+// ============================================================================
+
+model Notification {
+  id        String             @id @default(cuid())
+  userId    String
+
+  // Notification details
+  type      NotificationType
+  title     String
+  message   String             @db.Text
+  link      String?
+
+  // Status
+  read      Boolean            @default(false)
+  readAt    DateTime?
+
+  // Relationships
+  user      User               @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime           @default(now())
+  updatedAt DateTime           @updatedAt
+
+  @@index([userId])
+  @@index([read])
+  @@index([createdAt])
+  @@map("notifications")
+}
+
+// ============================================================================
+// Audit Log System
+// ============================================================================
+
+model AuditLog {
+  id          String    @id @default(cuid())
+  userId      String?
+
+  // Action details
+  action      String    // e.g., "user.login", "subscription.create", "payment.failed"
+  resource    String?   // e.g., "User", "Subscription", "Payment"
+  resourceId  String?
+
+  // Metadata
+  metadata    Json?     // Flexible JSON field for additional context
+
+  // Request info
+  ipAddress   String?
+  userAgent   String?
+
+  // Relationships
+  user        User?     @relation(fields: [userId], references: [id], onDelete: SetNull)
+
+  createdAt   DateTime  @default(now())
+
+  @@index([userId])
+  @@index([action])
+  @@index([createdAt])
+  @@map("audit_logs")
+}
+
+// ============================================================================
+// Content Management Models
+// ============================================================================
+
+model Article {
+  id           String           @id @default(cuid())
+  title        String
+  slug         String           @unique
+  excerpt      String           @db.Text
+  content      String           @db.Text  // Markdown/MDX content
+  coverImage   String?
+  category     ArticleCategory
+  tags         String[]
+  requiredTier SubscriptionTier @default(FREE)
+  published    Boolean          @default(false)
+  featured     Boolean          @default(false)
+  publishedAt  DateTime?
+  readTime     Int?             // Estimated read time in minutes
+
+  // Relationships
+  authorId     String
+  author       User             @relation(fields: [authorId], references: [id])
+
+  createdAt    DateTime         @default(now())
+  updatedAt    DateTime         @updatedAt
+
+  @@index([slug])
+  @@index([category, published])
+  @@index([requiredTier, published])
+  @@index([authorId])
+  @@map("articles")
+}
+
+model Video {
+  id           String           @id @default(cuid())
+  title        String
+  slug         String           @unique
+  description  String           @db.Text
+  embedUrl     String           // YouTube/Vimeo URL
+  platform     VideoPlatform    @default(YOUTUBE)
+  duration     Int?             // Duration in seconds
+  thumbnail    String?
+  category     String
+  requiredTier SubscriptionTier @default(FREE)
+  published    Boolean          @default(false)
+  publishedAt  DateTime?
+
+  // Relationships
+  authorId     String
+  author       User             @relation(fields: [authorId], references: [id])
+
+  createdAt    DateTime         @default(now())
+  updatedAt    DateTime         @updatedAt
+
+  @@index([slug])
+  @@index([published])
+  @@index([authorId])
+  @@map("videos")
+}
+
+model BrokerReview {
+  id              String           @id @default(cuid())
+  brokerName      String
+  slug            String           @unique
+  logo            String?
+  summary         String           @db.Text
+  content         String           @db.Text  // Detailed MDX review
+  overallRating   Float            // 1-5 scale
+  feesRating      Float
+  platformRating  Float
+  supportRating   Float
+  pros            String[]
+  cons            String[]
+  affiliateLink   String?
+  requiredTier    SubscriptionTier @default(FREE)
+  published       Boolean          @default(false)
+  publishedAt     DateTime?
+
+  // Relationships
+  authorId        String
+  author          User             @relation(fields: [authorId], references: [id])
+
+  createdAt       DateTime         @default(now())
+  updatedAt       DateTime         @updatedAt
+
+  @@index([slug])
+  @@index([published])
+  @@index([authorId])
+  @@map("broker_reviews")
+}
+
+// ============================================================================
+// Enums
+// ============================================================================
+
+enum UserRole {
+  USER
+  ADMIN
+  SUPER_ADMIN
+}
+
+// Content access tiers - simplified auth-only model
+// FREE: Accessible to everyone (no login required)
+// AUTHENTICATED: Requires user login (any other tier value)
+enum SubscriptionTier {
+  FREE
+  AUTHENTICATED
+}
+
+enum NotificationType {
+  INFO
+  SUCCESS
+  WARNING
+  ERROR
+  ACCOUNT
+  BILLING
+  SYSTEM
+}
+
+enum ArticleCategory {
+  BROKER_REVIEW
+  INVESTING_GUIDE
+  BASICS
+  MARKET_ANALYSIS
+  PORTFOLIO_STRATEGY
+  NEWS
+}
+
+enum VideoPlatform {
+  YOUTUBE
+  VIMEO
+}
+
+// ============================================================================
+// Currency & Exchange Rate Models
+// ============================================================================
+
+// Supported currencies
+model Currency {
+  id        String   @id @default(cuid())
+  code      String   @unique  // ISO 4217 code: USD, KWD, GBP, EUR, CHF
+  name      String             // US Dollar, Kuwaiti Dinar, etc.
+  symbol    String?            // $, KD, £, €, CHF
+
+  // Relationships
+  fromRates ExchangeRate[] @relation("FromCurrency")
+  toRates   ExchangeRate[] @relation("ToCurrency")
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("currencies")
+}
+
+// Historical exchange rates for currency conversion
+model ExchangeRate {
+  id             String   @id @default(cuid())
+  fromCurrencyId String
+  toCurrencyId   String
+  rate           Decimal  @db.Decimal(18, 8)  // Exchange rate (from → to)
+  effectiveDate  DateTime @db.Date            // Date this rate is valid
+  source         String?                      // "manual", "fmp", "ecb", etc.
+
+  // Relationships
+  fromCurrency   Currency @relation("FromCurrency", fields: [fromCurrencyId], references: [id])
+  toCurrency     Currency @relation("ToCurrency", fields: [toCurrencyId], references: [id])
+
+  createdAt      DateTime @default(now())
+
+  @@unique([fromCurrencyId, toCurrencyId, effectiveDate])
+  @@index([fromCurrencyId, toCurrencyId])
+  @@index([effectiveDate])
+  @@map("exchange_rates")
+}
+
+// ============================================================================
+// Portfolio Tracking Models
+// ============================================================================
+
+// User's portfolio container - users can have multiple portfolios
+model Portfolio {
+  id          String   @id @default(cuid())
+  userId      String
+  name        String   // e.g., "Retirement", "Trading", "Kids College"
+  description String?  @db.Text
+  isDefault   Boolean  @default(false)
+  baseCurrency String  @default("USD")  // Base currency for reporting
+
+  // Auto-refresh tracking
+  lastPriceRefresh DateTime?  // Last time prices were refreshed for this portfolio
+
+  // Relationships
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  accounts    FinancialAccount[]
+  documents   Document[]
+  snapshots   PortfolioSnapshot[]
+
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([userId])
+  @@map("portfolios")
+}
+
+// Financial accounts (brokers, banks, crypto exchanges)
+model FinancialAccount {
+  id           String      @id @default(cuid())
+  portfolioId  String
+  name         String      // e.g., "Fidelity IRA", "Chase Checking"
+  institution  String      // e.g., "Fidelity", "Interactive Brokers"
+  accountType  AccountType
+  currency     String      @default("USD")
+  isActive     Boolean     @default(true)
+  notes        String?     @db.Text
+
+  // Relationships
+  portfolio    Portfolio   @relation(fields: [portfolioId], references: [id], onDelete: Cascade)
+  holdings     Holding[]
+  transactions PortfolioTransaction[]
+
+  createdAt    DateTime    @default(now())
+  updatedAt    DateTime    @updatedAt
+
+  @@index([portfolioId])
+  @@map("financial_accounts")
+}
+
+// Individual holdings/positions
+model Holding {
+  id             String    @id @default(cuid())
+  accountId      String
+  symbol         String    // Ticker symbol (e.g., "AAPL", "BTC", "CASH.USD")
+  name           String    // Full name (e.g., "Apple Inc.", "US Dollar Cash")
+  assetType      AssetType
+  quantity       Decimal   @db.Decimal(18, 8)  // Supports crypto decimals
+  costBasis      Decimal?  @db.Decimal(18, 2)  // Total cost basis (sum of tax lots)
+  avgCostPerUnit Decimal?  @db.Decimal(18, 8)  // Calculated from tax lots
+  currency       String    @default("USD")
+  notes          String?   @db.Text
+
+  // Relationships
+  account        FinancialAccount @relation(fields: [accountId], references: [id], onDelete: Cascade)
+  transactions   PortfolioTransaction[]
+  priceHistory   PriceSnapshot[]
+  taxLots        TaxLot[]  // FIFO tax lots for this holding
+
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+
+  @@unique([accountId, symbol])  // One holding per symbol per account
+  @@index([accountId])
+  @@index([symbol])
+  @@map("holdings")
+}
+
+// Transaction records (buys, sells, dividends, etc.)
+model PortfolioTransaction {
+  id          String              @id @default(cuid())
+  accountId   String
+  holdingId   String?             // Nullable for deposits/withdrawals
+  type        PortfolioTransactionType
+  symbol      String?
+  quantity    Decimal?            @db.Decimal(18, 8)
+  price       Decimal?            @db.Decimal(18, 8)  // Price per unit
+  amount      Decimal             @db.Decimal(18, 2)  // Total amount
+  fees        Decimal?            @db.Decimal(18, 2)
+  currency    String              @default("USD")
+  date        DateTime
+  notes       String?             @db.Text
+
+  // Import tracking / duplicate detection
+  externalId   String?            // Hash or broker-provided ID for deduplication
+  importedAt   DateTime?          // When this transaction was imported
+  importSource String?            // "schwab", "ibkr", "manual"
+  importBatch  String?            // Batch ID for grouping imports (for rollback)
+
+  // Realized gains tracking (populated for SELL transactions)
+  costBasisUsed    Decimal?       @db.Decimal(18, 2)  // Cost basis consumed (FIFO)
+  realizedGainLoss Decimal?       @db.Decimal(18, 2)  // Gain/loss on this sale
+  holdingPeriodDays Int?          // Average days held (for tax classification)
+
+  // Bank transaction categorization fields
+  category          TransactionCategory?              // Primary category (from enum)
+  subcategory       String?                           // User-defined subcategory
+  merchant          String?                           // Parsed/normalized merchant name
+  isRecurring       Boolean        @default(false)    // Recurring transaction flag
+  recurringPattern  String?                           // "monthly", "weekly", "annual"
+  categorySource    String?        @default("auto")   // "auto", "manual", "rule"
+
+  // Relationships
+  account     FinancialAccount    @relation(fields: [accountId], references: [id], onDelete: Cascade)
+  holding     Holding?            @relation(fields: [holdingId], references: [id], onDelete: SetNull)
+  taxLots     TaxLot[]            // Tax lots created (BUY) or consumed (SELL)
+
+  createdAt   DateTime            @default(now())
+  updatedAt   DateTime            @updatedAt
+
+  @@index([accountId])
+  @@index([holdingId])
+  @@index([date])
+  @@index([type])
+  @@index([externalId])
+  @@index([importBatch])
+  @@map("portfolio_transactions")
+}
+
+// Price history snapshots for performance tracking
+model PriceSnapshot {
+  id          String   @id @default(cuid())
+  holdingId   String
+  price       Decimal  @db.Decimal(18, 8)
+  currency    String   @default("USD")
+  source      String?  // e.g., "yahoo", "coingecko", "manual", "fmp"
+  snapshotAt  DateTime
+
+  // Relationships
+  holding     Holding  @relation(fields: [holdingId], references: [id], onDelete: Cascade)
+
+  createdAt   DateTime @default(now())
+
+  @@index([holdingId])
+  @@index([snapshotAt])
+  @@map("price_snapshots")
+}
+
+// Portfolio value snapshots for historical performance tracking
+model PortfolioSnapshot {
+  id          String   @id @default(cuid())
+  portfolioId String
+  date        DateTime @db.Date
+  totalValue  Decimal  @db.Decimal(18, 2)  // Total portfolio value in USD
+  costBasis   Decimal  @db.Decimal(18, 2)  // Total cost basis in USD
+  cashValue   Decimal  @db.Decimal(18, 2)  // Cash holdings value in USD
+  gainLoss    Decimal  @db.Decimal(18, 2)  // Unrealized gain/loss (totalValue - costBasis)
+  gainLossPct Decimal  @db.Decimal(8, 4)   // Gain/loss percentage
+
+  // Relationships
+  portfolio   Portfolio @relation(fields: [portfolioId], references: [id], onDelete: Cascade)
+
+  createdAt   DateTime @default(now())
+
+  @@unique([portfolioId, date])
+  @@index([portfolioId, date])
+  @@map("portfolio_snapshots")
+}
+
+// Tax lot tracking for FIFO cost basis calculation
+model TaxLot {
+  id            String   @id @default(cuid())
+  holdingId     String
+  transactionId String   // The BUY transaction that created this lot
+  quantity      Decimal  @db.Decimal(18, 8)  // Original quantity purchased
+  remaining     Decimal  @db.Decimal(18, 8)  // Remaining after partial sells
+  costBasis     Decimal  @db.Decimal(18, 2)  // Total cost for this lot
+  costPerUnit   Decimal  @db.Decimal(18, 8)  // Cost per unit at purchase
+  acquiredAt    DateTime                     // Purchase date (for tax purposes)
+
+  // Relationships
+  holding       Holding              @relation(fields: [holdingId], references: [id], onDelete: Cascade)
+  transaction   PortfolioTransaction @relation(fields: [transactionId], references: [id], onDelete: Cascade)
+
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  @@index([holdingId])
+  @@index([acquiredAt])
+  @@index([transactionId])
+  @@map("tax_lots")
+}
+
+// ============================================================================
+// Budget Tracking Models
+// ============================================================================
+
+// Hierarchical budget categories (user-defined)
+model BudgetCategory {
+  id          String   @id @default(cuid())
+  userId      String
+  name        String                           // e.g., "HOME EXPENSES", "Rent"
+  code        String?                          // Enum-compatible code (e.g., "RENT")
+  parentId    String?                          // For subcategories
+  parent      BudgetCategory? @relation("Subcategories", fields: [parentId], references: [id])
+  children    BudgetCategory[] @relation("Subcategories")
+  sortOrder   Int      @default(0)
+  isActive    Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  // Relationships
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  budgetItems BudgetItem[]
+  mappings    CategoryMapping[]
+
+  @@unique([userId, name, parentId])
+  @@index([userId])
+  @@index([parentId])
+  @@map("budget_categories")
+}
+
+// Monthly budget amounts per category
+model BudgetItem {
+  id          String   @id @default(cuid())
+  categoryId  String
+  year        Int
+  month       Int                              // 1-12
+  amount      Decimal  @db.Decimal(15, 2)
+  currency    String   @default("USD")
+  notes       String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  // Relationships
+  category    BudgetCategory @relation(fields: [categoryId], references: [id], onDelete: Cascade)
+
+  @@unique([categoryId, year, month])
+  @@index([categoryId])
+  @@index([year, month])
+  @@map("budget_items")
+}
+
+// Links TransactionCategory enum values to BudgetCategory
+model CategoryMapping {
+  id                  String              @id @default(cuid())
+  userId              String
+  transactionCategory TransactionCategory // Enum value from bank transactions
+  budgetCategoryId    String
+  priority            Int                 @default(0)   // For multiple mappings
+  createdAt           DateTime            @default(now())
+
+  // Relationships
+  user           User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+  budgetCategory BudgetCategory @relation(fields: [budgetCategoryId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, transactionCategory])
+  @@index([userId])
+  @@index([budgetCategoryId])
+  @@map("category_mappings")
+}
+
+// Merchant detection rules for auto-categorization
+model MerchantRule {
+  id          String              @id @default(cuid())
+  userId      String?                          // null = system-wide default rule
+  pattern     String                           // Keyword or regex pattern
+  patternType String              @default("contains") // "contains", "starts_with", "regex"
+  merchant    String                           // Normalized merchant name
+  category    TransactionCategory              // Category to assign
+  subcategory String?                          // Optional subcategory
+  isRecurring Boolean             @default(false)
+  priority    Int                 @default(0)  // Higher = checked first
+  isActive    Boolean             @default(true)
+  createdAt   DateTime            @default(now())
+  updatedAt   DateTime            @updatedAt
+
+  // Relationships
+  user        User?    @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([category])
+  @@index([isActive, priority])
+  @@map("merchant_rules")
+}
+
+// ============================================================================
+// Document Storage Models (Phase 5)
+// ============================================================================
+
+// User documents organized by portfolio
+model Document {
+  id          String           @id @default(cuid())
+  userId      String
+  portfolioId String?          // null = user-wide document (not tied to specific portfolio)
+  category    DocumentCategory
+  name        String           // Original filename
+  displayName String?          // User-editable display name
+  mimeType    String           // MIME type (application/pdf, image/png, etc.)
+  size        Int              // File size in bytes
+  storageUrl  String           // Vercel Blob URL
+  year        Int?             // Tax year (for tax documents)
+  notes       String?          @db.Text
+
+  // Relationships
+  user        User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+  portfolio   Portfolio?       @relation(fields: [portfolioId], references: [id], onDelete: Cascade)
+
+  uploadedAt  DateTime         @default(now())
+  updatedAt   DateTime         @updatedAt
+
+  @@index([userId])
+  @@index([portfolioId])
+  @@index([category])
+  @@index([year])
+  @@map("documents")
+}
+
+// ============================================================================
+// Phase 4: Portfolio Tracking Enums
+// ============================================================================
+
+enum AccountType {
+  BROKERAGE       // Stock/ETF brokerage
+  BANK            // Bank account (cash)
+  CRYPTO_EXCHANGE // Cryptocurrency exchange
+  RETIREMENT      // 401k, IRA, pension
+  REAL_ESTATE     // Property investments
+  OTHER
+}
+
+enum AssetType {
+  STOCK
+  ETF
+  MUTUAL_FUND
+  BOND
+  CRYPTO
+  CASH
+  REAL_ESTATE
+  COMMODITY
+  OTHER
+}
+
+enum PortfolioTransactionType {
+  BUY
+  SELL
+  DIVIDEND
+  REINVEST_DIVIDEND  // Dividend reinvested (creates shares)
+  INTEREST
+  DEPOSIT
+  WITHDRAWAL
+  TRANSFER_IN
+  TRANSFER_OUT
+  FEE
+  SPLIT
+  TAX_WITHHOLDING    // NRA tax, foreign tax withholding
+  FOREX              // Currency exchange transaction
+  ADJUSTMENT         // FX P&L adjustments, corrections
+  OTHER
+}
+
+// Transaction categories for bank statement categorization
+enum TransactionCategory {
+  // Income
+  SALARY
+  RENTAL_INCOME
+  ALLOWANCE
+  INVESTMENT_INCOME
+  REFUND
+  OTHER_INCOME
+
+  // Home Expenses
+  RENT
+  ELECTRICITY
+  WATER_SEWER
+  INTERNET
+  HOME_MAINTENANCE
+  HOUSE_CLEANING
+  HOME_SUPPLIES
+  LAWN_GARDEN
+
+  // Transportation
+  AUTO_INSURANCE
+  AUTO_REPAIRS
+  FUEL
+  DMV_FEES
+  PARKING
+  PUBLIC_TRANSIT
+
+  // Health
+  HEALTH_INSURANCE
+  DOCTOR_DENTIST
+  MEDICINE
+  VETERINARY
+
+  // Daily Living
+  GROCERIES
+  DINING
+  CLOTHING
+  PERSONAL_CARE
+
+  // Subscriptions
+  PHONE
+  STREAMING
+  SOFTWARE
+  MEMBERSHIPS
+
+  // Miscellaneous
+  TAXES
+  LEGAL_FEES
+  BANK_FEES
+  ATM_WITHDRAWAL
+
+  // Transfers
+  TRANSFER
+  INVESTMENT
+  SAVINGS
+
+  // Uncategorized
+  UNCATEGORIZED
+}
+
+// Document categories for file organization
+enum DocumentCategory {
+  // Tax Documents
+  TAX_1099_DIV    // Dividend income
+  TAX_1099_INT    // Interest income
+  TAX_1099_B      // Proceeds from broker transactions
+  TAX_K1          // Partnership/S-corp income
+  TAX_SUMMARY     // Year-end tax summary
+  TAX_OTHER       // Other tax documents
+
+  // Statements
+  STATEMENT_MONTHLY
+  STATEMENT_QUARTERLY
+  STATEMENT_ANNUAL
+
+  // Other Documents
+  PROOF_OF_FUNDS  // Bank letters, verification
+  IMPORTED_CSV    // Auto-linked from CSV imports
+  OTHER
+}
