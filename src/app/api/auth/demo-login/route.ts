@@ -23,13 +23,17 @@ export async function POST() {
     }
 
     // Create a short-lived token (5 minutes) using NextAuth's JWT encoding
+    // Include required JWT fields from next-auth type extension plus demo-specific purpose
     const token = await encode({
       token: {
         sub: demoUser.id,
+        id: demoUser.id,
+        role: demoUser.role,
+        isDemo: demoUser.isDemo,
         purpose: "demo-login",
         iat: Math.floor(Date.now() / 1000),
         exp: Math.floor(Date.now() / 1000) + (5 * 60), // 5 minutes
-      },
+      } as Parameters<typeof encode>[0]["token"] & { purpose: string },
       secret: process.env.NEXTAUTH_SECRET!,
     })
 
