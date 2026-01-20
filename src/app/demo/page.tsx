@@ -1,14 +1,19 @@
 "use client"
 
 import { useEffect, useState } from "react"
-import { signIn } from "next-auth/react"
 import { Loader2 } from "lucide-react"
 
 /**
  * Demo Mode Entry Page
  *
- * This page automatically signs in as the demo user and redirects
- * to the demo portfolio. The demo user has read-only access.
+ * This page initiates a secure, token-based demo login flow.
+ * No credentials are exposed in client-side code - authentication
+ * is handled via signed, short-lived tokens verified server-side.
+ *
+ * Flow:
+ * 1. Page loads and calls /api/auth/demo-login to get a signed token
+ * 2. Redirects to /api/auth/demo-callback with the token
+ * 3. Callback verifies token, creates session, redirects to dashboard
  */
 export default function DemoPage() {
   const [error, setError] = useState<string | null>(null)
@@ -16,21 +21,22 @@ export default function DemoPage() {
   useEffect(() => {
     const startDemo = async () => {
       try {
-        const result = await signIn("credentials", {
-          email: "demo@localhost",
-          password: "demo-readonly-user-2024",
-          redirect: false,
+        // Request a demo login token from the server
+        const response = await fetch("/api/auth/demo-login", {
+          method: "POST",
         })
 
-        if (result?.error) {
-          setError("Demo mode is currently unavailable. Please try again later.")
-          return
+        if (!response.ok) {
+          const data = await response.json()
+          throw new Error(data.error || "Failed to start demo")
         }
 
-        // Redirect to demo portfolio
-        window.location.href = "/dashboard/portfolio/demo-portfolio"
+        const { token } = await response.json()
+
+        // Redirect to the callback endpoint which will create the session
+        window.location.href = `/api/auth/demo-callback?token=${encodeURIComponent(token)}`
       } catch (err) {
-        setError("Failed to start demo mode. Please try again.")
+        setError("Demo mode is currently unavailable. Please try again later.")
       }
     }
 
