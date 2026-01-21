@@ -13,7 +13,7 @@ jobs:
     steps:
       - name: Trigger price refresh
         run: |
-          response=$(curl -s -w "\n%{http_code}" -X POST "${{ secrets.APP_URL }}/api/cron/refresh-prices" \
+          response=$(curl -s -L -w "\n%{http_code}" -X POST "${{ secrets.APP_URL }}/api/cron/refresh-prices" \
             -H "Authorization: Bearer ${{ secrets.CRON_SECRET }}" \
             -H "Content-Type: application/json")
 
