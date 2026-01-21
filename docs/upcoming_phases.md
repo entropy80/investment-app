@@ -11,7 +11,7 @@
 | 1 | Auto Refresh Testing | High | Pending | Test and enable Vercel Cron for scheduled price updates |
 | 2 | Portfolio Snapshots | Medium | ✅ Completed | Review and test historical snapshot functionality |
 | 3 | CSV Parser Expansion | Medium | Pending | Evaluate next parsers (Wise, Revolut, Fidelity) |
-| 4 | Content: Value ETF Article | Low | Pending | Draft article on AI investment backlash and value ETF rotation |
+| 4 | Content: Value ETF Article | Low | ✅ Completed | Draft article on AI investment backlash and value ETF rotation |
 | 5 | Research: SimpleFIN | Low | Pending | Bank data integration for U.S. developers |
 
 ---
@@ -144,34 +144,28 @@ Review the CSV parser roadmap and evaluate next parsers to implement.
 
 ---
 
-## Phase 4: Content - AI Investment Backlash Article
+## Phase 4: Content - AI Investment Backlash Article ✅
 
-Draft an article exploring the AI investment backlash and the rise of value ETF rotation strategies.
+**Status:** Completed (2026-01-21)
+
+Drafted and published article exploring the AI investment backlash and value ETF rotation strategies.
 
 ### Research Topics
 
-| Topic | Notes |
-|-------|-------|
-| AI/Tech sector overvaluation concerns | Market sentiment shift |
-| Value ETF performance vs growth | Rotation patterns |
-| Diversification strategies | Portfolio allocation insights |
-| Historical sector rotation parallels | Dot-com, 2022 tech correction |
+| Topic | Status |
+|-------|--------|
+| AI/Tech sector overvaluation concerns | ✅ Researched |
+| Value ETF performance vs growth | ✅ Researched |
+| Diversification strategies | ✅ Researched |
+| Historical sector rotation parallels | ✅ Researched |
 
-### Article Outline (Draft)
-
-1. **Introduction** - The AI investment frenzy and signs of fatigue
-2. **The Case for Value** - Why investors are rotating to value ETFs
-3. **ETF Comparison** - Growth vs value performance metrics
-4. **Portfolio Implications** - How to position for uncertainty
-5. **Conclusion** - Balanced approach to sector exposure
-
-### Target
+### Article Details
 
 | Field | Value |
 |-------|-------|
-| Category | MARKET_ANALYSIS or PORTFOLIO_STRATEGY |
+| Category | MARKET_ANALYSIS |
 | Tier | FREE |
-| Estimated Length | 1,500-2,000 words |
+| Status | Published |
 
 ---
 
