@@ -1,6 +1,6 @@
 # Upcoming Phases - Investment App
 
-**Last Updated:** 2026-01-09
+**Last Updated:** 2026-01-21
 
 ---
 
@@ -9,7 +9,7 @@
 | Phase | Name | Priority | Status | Description |
 |-------|------|----------|--------|-------------|
 | 1 | Auto Refresh Testing | High | Pending | Test and enable Vercel Cron for scheduled price updates |
-| 2 | Portfolio Snapshots | Medium | Pending | Review and test historical snapshot functionality |
+| 2 | Portfolio Snapshots | Medium | ✅ Completed | Review and test historical snapshot functionality |
 | 3 | CSV Parser Expansion | Medium | Pending | Evaluate next parsers (Wise, Revolut, Fidelity) |
 | 4 | Content: Value ETF Article | Low | Pending | Draft article on AI investment backlash and value ETF rotation |
 | 5 | Research: SimpleFIN | Low | Pending | Bank data integration for U.S. developers |
@@ -55,34 +55,55 @@ Test and enable scheduled background price updates via Vercel Cron.
 
 ---
 
-## Phase 2: Portfolio Snapshots
+## Phase 2: Portfolio Snapshots ✅
 
-Review and test the historical portfolio snapshot functionality to understand how performance tracking works.
+**Status:** Completed (2026-01-21)
 
-### Goals
+Reviewed and tested the historical portfolio snapshot functionality. Fixed a critical bug in currency conversion.
 
-| Goal | Description |
-|------|-------------|
-| Understand snapshot logic | Review `src/lib/portfolio/snapshot-service.ts` |
-| Test snapshot creation | Create manual snapshots for portfolios |
-| Review performance chart | Verify chart displays correctly with different periods |
-| Evaluate backfill script | Test `scripts/backfill-snapshots.mjs` on portfolio |
+### Completed Tasks
+
+| Task | Status | Notes |
+|------|--------|-------|
+| Understand snapshot logic | ✅ Done | Reviewed `snapshot-service.ts` |
+| Test snapshot creation | ✅ Done | Created manual snapshot, verified calculation |
+| Review performance chart | ✅ Done | Chart displays correctly |
+| Fix exchange rate bug | ✅ Done | Was querying by "USD" string instead of currency record ID |
+
+### Bug Fixed
+
+**Issue:** `createTodaySnapshot()` queried exchange rates with `fromCurrencyId: "USD"` (literal string) instead of the actual currency record ID (CUID).
+
+**Impact:** Non-USD cash holdings (KWD, EUR, GBP, CHF) were not converted, causing incorrect valuations. Example: 90,000 KWD was valued at $90,000 instead of $290,322.
+
+**Fix:** Now looks up USD currency record first, then queries exchange rates by actual ID.
+
+### Snapshot Calculation Summary
+
+| Component | Calculation |
+|-----------|-------------|
+| Securities | `quantity × latestPrice` from price history |
+| CASH.USD | Direct quantity value |
+| CASH.{other} | `quantity ÷ exchangeRate` (converts to USD) |
+| No price available | Falls back to cost basis |
 
 ### Key Files
 
 | File | Purpose |
 |------|---------|
-| `src/lib/portfolio/snapshot-service.ts` | Snapshot creation and retrieval logic |
+| `src/lib/portfolio/snapshot-service.ts` | Snapshot creation and retrieval logic (fixed) |
 | `src/components/portfolio/performance-chart.tsx` | Performance visualization UI |
 | `src/app/api/portfolio/[id]/history/route.ts` | History API endpoint |
 | `scripts/backfill-snapshots.mjs` | Generate historical snapshots |
 
-### Questions to Answer
+### Answers to Questions
 
-- How are daily snapshots created? (Manual vs automatic)
-- What data is captured in each snapshot?
-- How does the performance calculation work?
-- Should snapshots be auto-generated via cron?
+| Question | Answer |
+|----------|--------|
+| How are snapshots created? | Manual via "Create Snapshot" button; could be automated via cron |
+| What data is captured? | totalValue, costBasis, cashValue, gainLoss, gainLossPct |
+| Performance calculation? | Compares snapshots over selected period (1M, 3M, 6M, 1Y, YTD, ALL) |
+| Auto-generate via cron? | Recommended - could add to price refresh cron job |
 
 ---
 
