@@ -45,29 +45,29 @@ export function DashboardNavbar({ isAdmin }: DashboardNavbarProps) {
       <NavigationMenuList>
         {/* Portfolio */}
         <NavigationMenuItem>
-          <Link href="/dashboard/portfolio" legacyBehavior passHref>
-            <NavigationMenuLink className={navigationMenuTriggerStyle()}>
+          <NavigationMenuLink asChild>
+            <Link href="/dashboard/portfolio" className={navigationMenuTriggerStyle()}>
               Portfolio
-            </NavigationMenuLink>
-          </Link>
+            </Link>
+          </NavigationMenuLink>
         </NavigationMenuItem>
 
         {/* Budget */}
         <NavigationMenuItem>
-          <Link href="/dashboard/budget" legacyBehavior passHref>
-            <NavigationMenuLink className={navigationMenuTriggerStyle()}>
+          <NavigationMenuLink asChild>
+            <Link href="/dashboard/budget" className={navigationMenuTriggerStyle()}>
               Budget
-            </NavigationMenuLink>
-          </Link>
+            </Link>
+          </NavigationMenuLink>
         </NavigationMenuItem>
 
         {/* Features */}
         <NavigationMenuItem>
-          <Link href="/features" legacyBehavior passHref>
-            <NavigationMenuLink className={navigationMenuTriggerStyle()}>
+          <NavigationMenuLink asChild>
+            <Link href="/features" className={navigationMenuTriggerStyle()}>
               Features
-            </NavigationMenuLink>
-          </Link>
+            </Link>
+          </NavigationMenuLink>
         </NavigationMenuItem>
 
         {/* Resources Dropdown */}
@@ -91,26 +91,26 @@ export function DashboardNavbar({ isAdmin }: DashboardNavbarProps) {
 
         {/* About */}
         <NavigationMenuItem>
-          <Link href="/about" legacyBehavior passHref>
-            <NavigationMenuLink className={navigationMenuTriggerStyle()}>
+          <NavigationMenuLink asChild>
+            <Link href="/about" className={navigationMenuTriggerStyle()}>
               About
-            </NavigationMenuLink>
-          </Link>
+            </Link>
+          </NavigationMenuLink>
         </NavigationMenuItem>
 
         {/* Admin Link (only for admins) */}
         {isAdmin && (
           <NavigationMenuItem>
-            <Link href="/admin" legacyBehavior passHref>
-              <NavigationMenuLink className={cn(navigationMenuTriggerStyle(), "text-amber-600 hover:text-amber-500")}>
+            <NavigationMenuLink asChild>
+              <Link href="/admin" className={cn(navigationMenuTriggerStyle(), "text-amber-600 hover:text-amber-500")}>
                 Admin
-              </NavigationMenuLink>
-            </Link>
+              </Link>
+            </NavigationMenuLink>
           </NavigationMenuItem>
         )}
       </NavigationMenuList>
     </NavigationMenu>
-  )
+  );
 }
 
 const ListItem = React.forwardRef<

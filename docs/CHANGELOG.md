@@ -4,6 +4,14 @@ All notable changes to the Investment App are documented here. Entries are order
 
 ---
 
+## 2026-01-21
+- **Fixed Next.js Link deprecation warnings**
+  - Removed deprecated `legacyBehavior` and `passHref` props from Link components
+  - Updated Radix UI NavigationMenuLink components to use `asChild` pattern
+  - Pattern changed from `<Link legacyBehavior><NavigationMenuLink>` to `<NavigationMenuLink asChild><Link>`
+  - Ran `npx @next/codemod@latest new-link .` followed by manual fixes for Radix UI compatibility
+  - Files: `src/components/navigation/dashboard-navbar.tsx`, `src/components/navigation/navbar.tsx`
+
 ## 2026-01-09
 - **Password Reset (Phase 2: Custom Email)**
   - Forgot password page at `/auth/forgot-password`
