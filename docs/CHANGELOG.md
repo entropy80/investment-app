@@ -5,6 +5,12 @@ All notable changes to the Investment App are documented here. Entries are order
 ---
 
 ## 2026-01-21
+- **Fixed exchange rate lookup bug in portfolio snapshots**
+  - Bug: Snapshot service queried `fromCurrencyId: "USD"` (literal string) instead of the actual currency record ID
+  - Impact: Non-USD cash holdings (KWD, EUR, GBP, CHF) were not converted properly, treating foreign amounts as USD
+  - Example: 90,000 KWD was valued at $90,000 instead of $290,322 (correct: 90,000 ÷ 0.31 rate)
+  - Fix: Now looks up USD currency record first, then queries exchange rates by actual ID
+  - File: `src/lib/portfolio/snapshot-service.ts`
 - **Fixed Next.js Link deprecation warnings**
   - Removed deprecated `legacyBehavior` and `passHref` props from Link components
   - Updated Radix UI NavigationMenuLink components to use `asChild` pattern

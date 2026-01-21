@@ -110,15 +110,23 @@ export async function createTodaySnapshot(
   }
 
   // Get exchange rates for currency conversion (USD -> other currencies)
-  const exchangeRates = await prisma.exchangeRate.findMany({
-    where: { fromCurrencyId: "USD" },
-    include: {
-      toCurrency: { select: { code: true } },
-    },
+  // First, get the USD currency record to find its actual ID
+  const usdCurrency = await prisma.currency.findFirst({
+    where: { code: "USD" },
   })
+
   const rateMap = new Map<string, number>()
-  for (const rate of exchangeRates) {
-    rateMap.set(rate.toCurrency.code, Number(rate.rate))
+
+  if (usdCurrency) {
+    const exchangeRates = await prisma.exchangeRate.findMany({
+      where: { fromCurrencyId: usdCurrency.id },
+      include: {
+        toCurrency: { select: { code: true } },
+      },
+    })
+    for (const rate of exchangeRates) {
+      rateMap.set(rate.toCurrency.code, Number(rate.rate))
+    }
   }
 
   let totalValue = 0
