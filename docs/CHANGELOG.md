@@ -5,13 +5,13 @@ All notable changes to the Investment App are documented here. Entries are order
 ---
 
 ## 2026-01-21
-- **Enabled Vercel Cron for scheduled price refresh**
-  - Added cron configuration to `vercel.json`
+- **Enabled GitHub Actions for scheduled price refresh**
+  - Replaced Vercel Cron with GitHub Actions (Hobby plan limitations)
   - Schedule: Every 4 hours (`0 */4 * * *`)
   - Endpoint: `/api/cron/refresh-prices` (already implemented)
-  - Protected by `CRON_SECRET` environment variable
-  - Prices will now auto-refresh without manual intervention
-  - File: `vercel.json`
+  - Protected by `CRON_SECRET` stored in GitHub Secrets
+  - Manual trigger available via workflow_dispatch
+  - File: `.github/workflows/refresh-prices.yml`
 - **Fixed exchange rate lookup bug in portfolio snapshots**
   - Bug: Snapshot service queried `fromCurrencyId: "USD"` (literal string) instead of the actual currency record ID
   - Impact: Non-USD cash holdings (KWD, EUR, GBP, CHF) were not converted properly, treating foreign amounts as USD
