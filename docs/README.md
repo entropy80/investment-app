@@ -63,7 +63,7 @@ The investment-app allows users to:
 
 | Component | Technology |
 |-----------|------------|
-| Framework | Next.js 16.1.1 |
+| Framework | Next.js 16.1.4 |
 | Runtime | Node.js v24 |
 | Database | PostgreSQL |
 | ORM | Prisma |

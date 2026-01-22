@@ -7,14 +7,14 @@ Personal investment portfolio tracker and financial content platform.
 | Category | Technology |
 |----------|------------|
 | Framework | Next.js 16.1 (App Router) |
-| Runtime | Node.js 24.12.0 LTS |
+| Runtime | Node.js 24.13.0 LTS |
 | Language | TypeScript 5.x |
 | Database | PostgreSQL 17.7 |
 | ORM | Prisma 6.19 |
 | Auth | NextAuth.js |
 | Styling | Tailwind CSS 4.x |
 | MDX | next-mdx-remote 5.x, remark-gfm 4.x |
-| Package Manager | pnpm 10.26 |
+| Package Manager | pnpm 10.28 |
 
 ## Environment
 

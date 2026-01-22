@@ -4,6 +4,11 @@ All notable changes to the Investment App are documented here. Entries are order
 
 ---
 
+## 2026-01-22
+- **Updated Next.js 16.1.1 → 16.1.4**
+  - Also updated `eslint-config-next` to 16.1.4
+  - Updated documentation: `README.md`, `docs/README.md`, `docs/maintenance/dependency-audit-jan-2026.md`
+
 ## 2026-01-21
 - **Enabled GitHub Actions for scheduled price refresh**
   - Replaced Vercel Cron with GitHub Actions (Hobby plan limitations)

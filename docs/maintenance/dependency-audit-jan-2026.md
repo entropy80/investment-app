@@ -4,14 +4,14 @@
 
 | Category | Current | Latest Stable | Status |
 |----------|---------|---------------|--------|
-| Next.js | 16.1.1 | 16.1.1 | Up to date |
+| Next.js | 16.1.4 | 16.1.4 | Up to date |
 | React | 19.2.3 | 19.2.3 | Up to date |
 | Prisma | 6.19.0 | 7.2.0 | **Deferred** (breaking migration) |
 | Tailwind CSS | ^4 | 4.1.x | Minor update available |
 | TypeScript | ^5 (5.9.3) | 5.9.3 | Up to date |
 | Node.js | v24 | v24 LTS (Krypton) | Up to date |
 | PostgreSQL | 17 | 18.1 | **Major update available** |
-| pnpm | (system) | 10.27.0 | Check system version |
+| pnpm | 10.28.1 | 10.28 | Up to date |
 
 ---
 
@@ -20,8 +20,8 @@
 ### Next.js
 | Property | Value |
 |----------|-------|
-| Current | 16.1.1 |
-| Latest | 16.1.1 |
+| Current | 16.1.4 |
+| Latest | 16.1.4 |
 | Status | Up to date |
 
 **Security Note:** Updated 2026-01-02. Patched CVE-2025-55184 and CVE-2025-55183.
@@ -220,7 +220,7 @@ Sources: [next-mdx-remote-client](https://www.npmjs.com/package/next-mdx-remote-
 | date-fns | ^4.1.0 | 4.1.0 | Up to date |
 | decimal.js | ^10.6.0 | Check npm | Review |
 | lucide-react | ^0.562.0 | 0.562.0 | Up to date |
-| next | 16.1.1 | 16.1.1 | Up to date |
+| next | 16.1.4 | 16.1.4 | Up to date |
 | next-auth | ^4.24.13 | 4.24.13 / 5.x | Review v5 |
 | next-mdx-remote | ^5.0.0 | Consider alt | Review |
 | papaparse | ^5.5.3 | Check npm | Review |
@@ -242,7 +242,7 @@ Sources: [next-mdx-remote-client](https://www.npmjs.com/package/next-mdx-remote-
 | @types/node | ^20 | ^22 | Update |
 | @types/react | ^19 | ^19 | Review |
 | eslint | ^9 | Check npm | Review |
-| eslint-config-next | 16.1.1 | 16.1.1 | Up to date |
+| eslint-config-next | 16.1.4 | 16.1.4 | Up to date |
 | prisma | ^6.19.0 | 7.2.0 | **Upgrade** |
 | tailwindcss | ^4 | 4.1.x | Update |
 | tsx | ^4.21.0 | Check npm | Review |
