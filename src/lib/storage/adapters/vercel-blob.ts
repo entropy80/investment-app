@@ -15,8 +15,10 @@ export class VercelBlobAdapter implements StorageAdapter {
     data: Buffer | Blob,
     options?: UploadOptions
   ): Promise<UploadResult> {
+    // Vercel Blob only supports public access
+    // If private access is needed, use S3 or local storage instead
     const blob = await put(path, data, {
-      access: options?.access ?? "public",
+      access: "public",
       addRandomSuffix: options?.addRandomSuffix ?? true,
       contentType: options?.contentType,
     })
