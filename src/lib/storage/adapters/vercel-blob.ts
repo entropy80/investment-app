@@ -12,7 +12,7 @@ export class VercelBlobAdapter implements StorageAdapter {
    */
   async upload(
     path: string,
-    data: Buffer | Blob | File,
+    data: Buffer | Blob,
     options?: UploadOptions
   ): Promise<UploadResult> {
     const blob = await put(path, data, {

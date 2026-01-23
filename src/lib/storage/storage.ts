@@ -76,7 +76,7 @@ export function getStorageAdapter(): StorageAdapter {
  */
 export async function uploadFile(
   path: string,
-  data: Buffer | Blob | File,
+  data: Buffer | Blob,
   options?: UploadOptions
 ): Promise<UploadResult> {
   const storageAdapter = getStorageAdapter()

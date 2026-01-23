@@ -27,13 +27,13 @@ export interface StorageAdapter {
   /**
    * Upload a file to storage
    * @param path - The storage path (e.g., "documents/userId/file.pdf")
-   * @param data - The file data as Buffer, Blob, or File
+   * @param data - The file data as Buffer or Blob (File extends Blob, so File is also accepted)
    * @param options - Upload options
    * @returns Upload result with URL and metadata
    */
   upload(
     path: string,
-    data: Buffer | Blob | File,
+    data: Buffer | Blob,
     options?: UploadOptions
   ): Promise<UploadResult>
 

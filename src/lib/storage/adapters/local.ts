@@ -48,7 +48,7 @@ export class LocalStorageAdapter implements StorageAdapter {
    */
   async upload(
     path: string,
-    data: Buffer | Blob | File,
+    data: Buffer | Blob,
     options?: UploadOptions
   ): Promise<UploadResult> {
     // Add random suffix if requested (default true)
@@ -73,7 +73,8 @@ export class LocalStorageAdapter implements StorageAdapter {
     let buffer: Buffer
     if (Buffer.isBuffer(data)) {
       buffer = data
-    } else if (data instanceof Blob || data instanceof File) {
+    } else if (data instanceof Blob) {
+      // Note: File extends Blob, so this handles both Blob and File types
       const arrayBuffer = await data.arrayBuffer()
       buffer = Buffer.from(arrayBuffer)
     } else {
@@ -83,9 +84,9 @@ export class LocalStorageAdapter implements StorageAdapter {
     // Write file to disk
     await writeFile(fullPath, buffer)
 
-    // Determine content type
+    // Determine content type from options or Blob type property
     let contentType = options?.contentType
-    if (!contentType && data instanceof File) {
+    if (!contentType && data instanceof Blob && data.type) {
       contentType = data.type
     }
 
