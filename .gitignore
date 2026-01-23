@@ -32,3 +32,6 @@ Thumbs.db
 
 # Backup files
 *.backup
+
+# Local file uploads (when using local storage provider)
+uploads/

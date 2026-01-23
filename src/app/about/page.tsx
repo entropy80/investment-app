@@ -1,6 +1,6 @@
 import Link from 'next/link'
 import { Card, CardContent } from '@/components/ui/card'
-import { Code2, Shield, Users } from 'lucide-react'
+import { Code2, Shield, Users, Github } from 'lucide-react'
 
 export default function About() {
   return (
@@ -13,6 +13,44 @@ export default function About() {
         <p className="text-lg text-muted-foreground max-w-2xl mx-auto">
           A portfolio tracking and investment education platform built for the modern global investor.
         </p>
+      </section>
+
+      {/* Open Source Section */}
+      <section className="mb-16">
+        <Card>
+          <CardContent className="pt-6">
+            <div className="flex items-start gap-4">
+              <Github className="h-8 w-8 text-primary flex-shrink-0 mt-1" />
+              <div>
+                <h2 className="text-xl font-semibold mb-3">Open Source</h2>
+                <p className="text-muted-foreground mb-4">
+                  Investment App is fully open source. You can view the source code, contribute improvements,
+                  report issues, or self-host your own instance. The code is available under the MIT license.
+                </p>
+                <div className="flex flex-wrap gap-3">
+                  <a
+                    href="https://github.com/entropy80/investment-app"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="inline-flex items-center gap-2 text-primary hover:underline font-medium"
+                  >
+                    <Github className="h-4 w-4" />
+                    View on GitHub
+                  </a>
+                  <span className="text-muted-foreground">|</span>
+                  <a
+                    href="https://github.com/entropy80/investment-app/blob/main/docs/deployment/self-hosting.md"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-primary hover:underline font-medium"
+                  >
+                    Self-hosting guide
+                  </a>
+                </div>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
       </section>
 
       {/* Development Section */}
@@ -54,7 +92,8 @@ export default function About() {
                   By using this application, you acknowledge and consent to the sharing of your data
                   with the application&apos;s creator and the creators of the tools employed in its development.
                   We recommend treating portfolio data with appropriate care and understanding that
-                  this is a personal project, not a commercial financial service.
+                  this is a personal project, not a commercial financial service. Since the code is open source,
+                  you can audit exactly how your data is handled or self-host your own instance for complete control.
                 </p>
               </div>
             </div>

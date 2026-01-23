@@ -12,6 +12,7 @@ import {
   Shield,
   CreditCard,
   Sparkles,
+  Github,
 } from 'lucide-react'
 
 export default function Home() {
@@ -54,6 +55,15 @@ export default function Home() {
                 <Shield className="h-4 w-4 text-primary" />
                 Your data stays private
               </span>
+              <a
+                href="https://github.com/entropy80/investment-app"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="flex items-center gap-1.5 hover:text-foreground transition-colors"
+              >
+                <Github className="h-4 w-4 text-primary" />
+                Open source
+              </a>
             </div>
           </div>
 

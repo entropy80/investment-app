@@ -1,4 +1,5 @@
 import Link from 'next/link'
+import { Github } from 'lucide-react'
 
 export function Footer() {
   const currentYear = new Date().getFullYear()
@@ -29,6 +30,15 @@ export function Footer() {
             >
               Acknowledgments
             </Link>
+            <a
+              href="https://github.com/entropy80/investment-app"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-muted-foreground hover:text-foreground transition-colors"
+              aria-label="GitHub"
+            >
+              <Github className="h-5 w-5" />
+            </a>
           </nav>
         </div>
       </div>

@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server"
 import { getServerSession } from "next-auth"
 import { authOptions } from "@/lib/auth"
 import { prisma } from "@/lib/prisma"
-import { put } from "@vercel/blob"
+import { uploadFile } from "@/lib/storage"
 import { demoGuard } from "@/lib/demo/demo-guard"
 import { DocumentCategory } from "@prisma/client"
 
@@ -242,11 +242,16 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
     // Sanitize filename to prevent path traversal and injection attacks
     const sanitizedFilename = sanitizeFilename(file.name)
 
-    // Upload to Vercel Blob with public access (URL includes random suffix for security)
-    const blob = await put(`documents/${session.user.id}/${portfolioId}/${sanitizedFilename}`, file, {
-      access: "public",
-      addRandomSuffix: true,
-    })
+    // Upload to storage (provider determined by configuration)
+    const uploadResult = await uploadFile(
+      `documents/${session.user.id}/${portfolioId}/${sanitizedFilename}`,
+      file,
+      {
+        access: "public",
+        addRandomSuffix: true,
+        contentType: file.type,
+      }
+    )
 
     // Create document record
     const document = await prisma.document.create({
@@ -258,7 +263,7 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
         displayName: displayName || null,
         mimeType: file.type,
         size: file.size,
-        storageUrl: blob.url,
+        storageUrl: uploadResult.url,
         year: year ? parseInt(year, 10) : null,
         notes: notes || null,
       },

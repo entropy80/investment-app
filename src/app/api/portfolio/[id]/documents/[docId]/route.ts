@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server"
 import { getServerSession } from "next-auth"
 import { authOptions } from "@/lib/auth"
 import { prisma } from "@/lib/prisma"
-import { del } from "@vercel/blob"
+import { deleteFile } from "@/lib/storage"
 import { demoGuard } from "@/lib/demo/demo-guard"
 import { DocumentCategory } from "@prisma/client"
 
@@ -148,12 +148,12 @@ export async function DELETE(request: NextRequest, { params }: RouteParams) {
       )
     }
 
-    // Delete from Vercel Blob storage
+    // Delete from storage (provider determined by configuration)
     try {
-      await del(document.storageUrl)
-    } catch (blobError) {
-      console.error("Error deleting blob:", blobError)
-      // Continue with database deletion even if blob deletion fails
+      await deleteFile(document.storageUrl)
+    } catch (storageError) {
+      console.error("Error deleting file from storage:", storageError)
+      // Continue with database deletion even if storage deletion fails
     }
 
     // Delete from database
