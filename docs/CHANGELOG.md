@@ -4,6 +4,18 @@ All notable changes to the Investment App are documented here. Entries are order
 
 ---
 
+
+## 2026-01-23
+- **Added LED-style stock ticker to landing page**
+  - Scrolling ticker displaying SPY, QQQ, DIA, AAPL, MSFT, GOOGL, NVDA, TSLA, BTC, ETH
+  - Positioned directly below header, above hero section
+  - Green/red LED glow effects on price changes
+  - New API endpoint `/api/ticker` with 5-minute in-memory cache
+  - Static fallback data if API fails (prevents blank ticker)
+  - Animation pauses on hover for accessibility
+  - Respects `prefers-reduced-motion` media query
+  - Files: `src/app/api/ticker/route.ts`, `src/components/landing/stock-ticker.tsx`, `src/components/landing/ticker-item.tsx`
+
 ## 2026-01-22
 - **Updated Next.js 16.1.1 → 16.1.4**
   - Also updated `eslint-config-next` to 16.1.4
