@@ -6,6 +6,10 @@ All notable changes to the Investment App are documented here. Entries are order
 
 
 ## 2026-01-24
+- **Reordered portfolio page tabs**
+  - New order: Holdings, Allocation, Accounts, Transactions, Documents, Tax Reports
+  - Holdings tab is now the default view when visiting a portfolio
+  - File: `src/app/(dashboard)/dashboard/portfolio/[id]/page.tsx`
 - **Fixed stock ticker always showing static fallback data**
   - Root cause: Ticker API used FMP `/stable/quote` endpoint which requires premium subscription
   - Solution: Refactored to use shared `fetchStockQuotes` from `fmp-service.ts` which has Alpha Vantage fallback

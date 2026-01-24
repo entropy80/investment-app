@@ -1727,14 +1727,9 @@ export default function PortfolioDetailPage() {
         )
       })()}
 
-      {/* Tabs for Accounts, Holdings, Transactions */}
-      <Tabs defaultValue="accounts">
+      {/* Tabs for Holdings, Allocation, Accounts, Transactions, etc. */}
+      <Tabs defaultValue="holdings">
         <TabsList className="w-full justify-start overflow-x-auto scrollbar-hide">
-          <TabsTrigger value="accounts" className="flex items-center gap-1 sm:gap-2 px-2 sm:px-3">
-            <Building2 className="h-4 w-4 shrink-0" />
-            <span className="hidden sm:inline">Accounts ({portfolio?.accounts?.length || 0})</span>
-            <span className="sm:hidden">Acct</span>
-          </TabsTrigger>
           <TabsTrigger value="holdings" className="flex items-center gap-1 sm:gap-2 px-2 sm:px-3">
             <PieChart className="h-4 w-4 shrink-0" />
             <span>Holdings</span>
@@ -1743,6 +1738,11 @@ export default function PortfolioDetailPage() {
             <BarChart3 className="h-4 w-4 shrink-0" />
             <span className="hidden sm:inline">Allocation</span>
             <span className="sm:hidden">Alloc</span>
+          </TabsTrigger>
+          <TabsTrigger value="accounts" className="flex items-center gap-1 sm:gap-2 px-2 sm:px-3">
+            <Building2 className="h-4 w-4 shrink-0" />
+            <span className="hidden sm:inline">Accounts ({portfolio?.accounts?.length || 0})</span>
+            <span className="sm:hidden">Acct</span>
           </TabsTrigger>
           <TabsTrigger
             value="transactions"
