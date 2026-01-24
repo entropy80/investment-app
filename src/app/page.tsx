@@ -15,6 +15,7 @@ import {
   Github,
 } from 'lucide-react'
 import { StockTicker } from '@/components/landing/stock-ticker'
+import { HeroPortfolioMockup } from '@/components/landing/hero-portfolio-mockup'
 
 export default function Home() {
   return (
@@ -72,64 +73,7 @@ export default function Home() {
           </div>
 
           {/* Right: Portfolio Preview Mockup */}
-          <div className="relative">
-            <Card className="overflow-hidden border-2">
-              <CardContent className="p-0">
-                {/* Mockup Header */}
-                <div className="bg-muted/50 border-b px-4 py-3 flex items-center justify-between">
-                  <span className="font-semibold">Demo Portfolio</span>
-                  <span className="text-xs text-muted-foreground">Live Preview</span>
-                </div>
-                {/* Mockup Content */}
-                <div className="p-4 space-y-4">
-                  {/* Summary Cards Row */}
-                  <div className="grid grid-cols-2 gap-3">
-                    <div className="bg-muted/30 rounded-lg p-3">
-                      <p className="text-xs text-muted-foreground">Total Value</p>
-                      <p className="text-lg font-bold">$54,230</p>
-                      <p className="text-xs text-green-600">+$4,705 (9.5%)</p>
-                    </div>
-                    <div className="bg-muted/30 rounded-lg p-3">
-                      <p className="text-xs text-muted-foreground">Accounts</p>
-                      <p className="text-lg font-bold">5</p>
-                      <p className="text-xs text-muted-foreground">3 currencies</p>
-                    </div>
-                  </div>
-                  {/* Holdings Preview */}
-                  <div className="space-y-2">
-                    <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Holdings</p>
-                    <div className="space-y-1.5">
-                      {[
-                        { symbol: 'VTI', name: 'Vanguard Total Stock', value: '$13,275', change: '+18%' },
-                        { symbol: 'AAPL', name: 'Apple Inc.', value: '$3,720', change: '+42%' },
-                        { symbol: 'BTC', name: 'Bitcoin', value: '$14,775', change: '+119%' },
-                      ].map((holding) => (
-                        <div key={holding.symbol} className="flex items-center justify-between py-1.5 border-b border-dashed last:border-0">
-                          <div>
-                            <span className="font-medium text-sm">{holding.symbol}</span>
-                            <span className="text-xs text-muted-foreground ml-2">{holding.name}</span>
-                          </div>
-                          <div className="text-right">
-                            <span className="text-sm font-medium">{holding.value}</span>
-                            <span className="text-xs text-green-600 ml-2">{holding.change}</span>
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                  {/* Currency Badges */}
-                  <div className="flex gap-2 pt-2">
-                    <span className="text-xs bg-primary/10 text-primary px-2 py-1 rounded">USD</span>
-                    <span className="text-xs bg-primary/10 text-primary px-2 py-1 rounded">EUR</span>
-                    <span className="text-xs bg-primary/10 text-primary px-2 py-1 rounded">GBP</span>
-                    <span className="text-xs bg-primary/10 text-primary px-2 py-1 rounded">CHF</span>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-            {/* Decorative gradient */}
-            <div className="absolute -inset-1 bg-gradient-to-r from-primary/20 to-primary/5 rounded-xl blur-xl -z-10" />
-          </div>
+          <HeroPortfolioMockup />
         </div>
       </section>
 

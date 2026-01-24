@@ -13,6 +13,14 @@ All notable changes to the Investment App are documented here. Entries are order
   - Increased cache duration from 5 to 30 minutes to minimize API usage and reduce 40-second delays
   - Client-side refresh interval updated to match server cache (30 minutes)
   - Files: `src/app/api/ticker/route.ts`, `src/components/landing/stock-ticker.tsx`
+- **Redesigned landing page hero mockup with asset allocation visualization**
+  - Replaced holdings list mockup with donut chart and portfolio breakdown
+  - CSS-based donut chart using conic-gradient (no Recharts dependency, server-renderable)
+  - Uses same `--chart-*` CSS variables as real portfolio for theme consistency
+  - Two-column layout: Asset Allocation chart with legend, Portfolio Breakdown summary
+  - Sample data: Stocks 42%, ETFs 28%, Crypto 18%, Cash 12%
+  - Header with trending indicator, footer with currency badges
+  - Files: `src/components/landing/hero-portfolio-mockup.tsx`, `src/app/page.tsx`
 
 ## 2026-01-23
 - **Added LED-style stock ticker to landing page**
