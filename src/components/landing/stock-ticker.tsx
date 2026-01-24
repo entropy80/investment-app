@@ -49,8 +49,8 @@ export function StockTicker() {
     }
 
     fetchTicker();
-    // Refresh every 5 minutes
-    const interval = setInterval(fetchTicker, 5 * 60 * 1000);
+    // Refresh every 30 minutes (matches server cache duration)
+    const interval = setInterval(fetchTicker, 30 * 60 * 1000);
     return () => clearInterval(interval);
   }, []);
 

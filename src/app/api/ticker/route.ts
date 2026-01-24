@@ -2,12 +2,13 @@
  * Public Ticker API Endpoint
  * Returns cached stock quotes for the landing page ticker
  * Cache: 5 minutes in-memory
+ *
+ * Uses the shared price service which has Alpha Vantage fallback
+ * when FMP fails (FMP /stable/quote requires premium subscription)
  */
 
 import { NextResponse } from "next/server";
-
-const FMP_API_KEY = process.env.FMP_API_KEY;
-const FMP_BASE_URL = "https://financialmodelingprep.com/stable";
+import { fetchStockQuotes, fetchCryptoQuotes } from "@/lib/prices/fmp-service";
 
 // Ticker symbols to display
 const TICKER_SYMBOLS = [
@@ -19,7 +20,7 @@ const CRYPTO_SYMBOLS = ["BTC", "ETH"];
 // In-memory cache
 let cachedData: TickerData[] | null = null;
 let cacheTimestamp: number = 0;
-const CACHE_DURATION_MS = 5 * 60 * 1000; // 5 minutes
+const CACHE_DURATION_MS = 30 * 60 * 1000; // 30 minutes
 
 export interface TickerData {
   symbol: string;
@@ -28,7 +29,7 @@ export interface TickerData {
   changePercent: number;
 }
 
-// Static fallback data
+// Static fallback data (used when all API calls fail)
 const FALLBACK_DATA: TickerData[] = [
   { symbol: "SPY", price: 452.30, change: 2.45, changePercent: 0.54 },
   { symbol: "QQQ", price: 385.20, change: -1.85, changePercent: -0.48 },
@@ -42,61 +43,72 @@ const FALLBACK_DATA: TickerData[] = [
   { symbol: "ETH", price: 3245.80, change: -45.20, changePercent: -1.37 },
 ];
 
-async function fetchQuote(symbol: string): Promise<TickerData | null> {
-  try {
-    const url = `${FMP_BASE_URL}/quote?symbol=${symbol}&apikey=${FMP_API_KEY}`;
-    const response = await fetch(url);
-
-    if (!response.ok) return null;
-
-    const contentType = response.headers.get("content-type");
-    if (!contentType || !contentType.includes("application/json")) return null;
-
-    const data = await response.json();
-
-    if (Array.isArray(data) && data.length > 0 && data[0].price > 0) {
-      const quote = data[0];
-      return {
-        symbol,
-        price: quote.price,
-        change: quote.change || 0,
-        changePercent: quote.changesPercentage || quote.changePercentage || 0,
-      };
-    }
-    return null;
-  } catch {
-    return null;
-  }
-}
+// Create a map for quick fallback lookup
+const FALLBACK_MAP = new Map(FALLBACK_DATA.map(item => [item.symbol, item]));
 
 async function fetchAllQuotes(): Promise<TickerData[]> {
-  if (!FMP_API_KEY) {
-    return FALLBACK_DATA;
-  }
-
   const results: TickerData[] = [];
 
-  // Fetch stock quotes
-  for (const symbol of TICKER_SYMBOLS) {
-    const quote = await fetchQuote(symbol);
-    if (quote) {
-      results.push(quote);
+  try {
+    // Fetch stock quotes using shared service (has Alpha Vantage fallback)
+    const stockResults = await fetchStockQuotes(TICKER_SYMBOLS);
+
+    for (const result of stockResults) {
+      if (result.price > 0 && !result.error) {
+        results.push({
+          symbol: result.symbol,
+          price: result.price,
+          change: result.change || 0,
+          changePercent: result.changePercent || 0,
+        });
+      } else {
+        // Use fallback for this specific symbol if API failed
+        const fallback = FALLBACK_MAP.get(result.symbol);
+        if (fallback) {
+          results.push(fallback);
+        }
+      }
     }
-    // Small delay to avoid rate limiting
-    await new Promise(resolve => setTimeout(resolve, 150));
+  } catch (error) {
+    console.error("Error fetching stock quotes for ticker:", error);
+    // Add stock fallbacks
+    for (const symbol of TICKER_SYMBOLS) {
+      const fallback = FALLBACK_MAP.get(symbol);
+      if (fallback) results.push(fallback);
+    }
   }
 
-  // Fetch crypto quotes (using USD suffix)
-  for (const symbol of CRYPTO_SYMBOLS) {
-    const quote = await fetchQuote(`${symbol}USD`);
-    if (quote) {
-      results.push({ ...quote, symbol }); // Use original symbol without USD
+  try {
+    // Fetch crypto quotes (FMP only, no Alpha Vantage fallback for crypto)
+    const cryptoResults = await fetchCryptoQuotes(CRYPTO_SYMBOLS);
+
+    for (const result of cryptoResults) {
+      if (result.price > 0 && !result.error) {
+        results.push({
+          symbol: result.symbol,
+          price: result.price,
+          change: result.change || 0,
+          changePercent: result.changePercent || 0,
+        });
+      } else {
+        // Use fallback for this specific crypto if API failed
+        const fallback = FALLBACK_MAP.get(result.symbol);
+        if (fallback) {
+          results.push(fallback);
+        }
+      }
     }
-    await new Promise(resolve => setTimeout(resolve, 150));
+  } catch (error) {
+    console.error("Error fetching crypto quotes for ticker:", error);
+    // Add crypto fallbacks
+    for (const symbol of CRYPTO_SYMBOLS) {
+      const fallback = FALLBACK_MAP.get(symbol);
+      if (fallback) results.push(fallback);
+    }
   }
 
-  // If we got less than half the expected results, use fallback
-  if (results.length < (TICKER_SYMBOLS.length + CRYPTO_SYMBOLS.length) / 2) {
+  // If we got no results at all, return full fallback
+  if (results.length === 0) {
     return FALLBACK_DATA;
   }
 

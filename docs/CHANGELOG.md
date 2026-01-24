@@ -5,6 +5,15 @@ All notable changes to the Investment App are documented here. Entries are order
 ---
 
 
+## 2026-01-24
+- **Fixed stock ticker always showing static fallback data**
+  - Root cause: Ticker API used FMP `/stable/quote` endpoint which requires premium subscription
+  - Solution: Refactored to use shared `fetchStockQuotes` from `fmp-service.ts` which has Alpha Vantage fallback
+  - Per-symbol fallback: If individual symbol fails, only that symbol uses static data
+  - Increased cache duration from 5 to 30 minutes to minimize API usage and reduce 40-second delays
+  - Client-side refresh interval updated to match server cache (30 minutes)
+  - Files: `src/app/api/ticker/route.ts`, `src/components/landing/stock-ticker.tsx`
+
 ## 2026-01-23
 - **Added LED-style stock ticker to landing page**
   - Scrolling ticker displaying SPY, QQQ, DIA, AAPL, MSFT, GOOGL, NVDA, TSLA, BTC, ETH
