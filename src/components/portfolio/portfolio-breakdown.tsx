@@ -59,14 +59,15 @@ export function PortfolioBreakdown({
   formatCurrency,
   hasConversion,
   convertedValues,
+  realizedGains,
 }: PortfolioBreakdownProps) {
   const isPositive = unrealizedGainLoss >= 0
 
   return (
-    <div className="space-y-3">
+    <div className="space-y-2">
       <h3 className="font-semibold text-base">Portfolio Breakdown</h3>
 
-      <div className="space-y-2">
+      <div className="space-y-1.5">
         <BreakdownRow
           label="Invested Capital"
           value={formatCurrency(investedCapital, baseCurrency)}
@@ -80,6 +81,27 @@ export function PortfolioBreakdown({
           icon={isPositive ? <TrendingUp className="h-4 w-4" /> : <TrendingDown className="h-4 w-4" />}
           sublabel={`${isPositive ? '+' : ''}${gainLossPercent.toFixed(2)}%`}
         />
+        {realizedGains && realizedGains.total !== 0 && (
+          <>
+            <BreakdownRow
+              label="Realized Gain/Loss"
+              value={`${realizedGains.total >= 0 ? '+' : ''}${formatCurrency(realizedGains.total, baseCurrency)}`}
+              valueClassName={realizedGains.total >= 0 ? 'text-green-500' : 'text-red-500'}
+            />
+            <div className="pl-4 space-y-1">
+              <BreakdownRow
+                label="Short-Term (<1yr)"
+                value={`${realizedGains.shortTerm >= 0 ? '+' : ''}${formatCurrency(realizedGains.shortTerm, baseCurrency)}`}
+                valueClassName={realizedGains.shortTerm >= 0 ? 'text-green-500/80' : 'text-red-500/80'}
+              />
+              <BreakdownRow
+                label="Long-Term (≥1yr)"
+                value={`${realizedGains.longTerm >= 0 ? '+' : ''}${formatCurrency(realizedGains.longTerm, baseCurrency)}`}
+                valueClassName={realizedGains.longTerm >= 0 ? 'text-green-500/80' : 'text-red-500/80'}
+              />
+            </div>
+          </>
+        )}
         <BreakdownRow
           label="Securities Value"
           value={formatCurrency(securitiesValue, baseCurrency)}

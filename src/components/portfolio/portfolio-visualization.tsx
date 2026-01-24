@@ -14,6 +14,7 @@ export function PortfolioVisualization({
   hasConversion,
   formatCurrency,
   isLoading,
+  realizedGains,
 }: PortfolioVisualizationProps) {
   // Calculate cash holdings from asset allocation
   const cashAllocation = assetAllocation.find((item) => item.assetType === 'CASH')
@@ -118,6 +119,7 @@ export function PortfolioVisualization({
                 cashHoldings: cashHoldings,
                 totalValue: summary.totalValue,
               } : undefined}
+              realizedGains={realizedGains}
             />
           </div>
         </div>

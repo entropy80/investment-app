@@ -545,26 +545,7 @@ export default function PortfolioDetailPage() {
         params.set("includeMetadata", "true")
       }
 
-      // Fetch realized gains summary in parallel with transactions
-      const [txResponse, gainsResponse] = await Promise.all([
-        fetch(`/api/portfolio/${portfolioId}/transactions?${params}`),
-        realizedGainsSummary === null
-          ? fetch(`/api/portfolio/${portfolioId}/tax-lots?action=realized-gains`)
-          : Promise.resolve(null),
-      ])
-
-      if (gainsResponse) {
-        const gainsData = await gainsResponse.json()
-        if (gainsResponse.ok) {
-          setRealizedGainsSummary({
-            totalRealizedGain: gainsData.totalRealizedGain || 0,
-            shortTermGain: gainsData.shortTermGain || 0,
-            longTermGain: gainsData.longTermGain || 0,
-          })
-        }
-      }
-
-      const response = txResponse
+      const response = await fetch(`/api/portfolio/${portfolioId}/transactions?${params}`)
       const data = await response.json()
 
       if (response.ok) {
@@ -597,6 +578,24 @@ export default function PortfolioDetailPage() {
       console.error("Error fetching bank summary:", err)
     } finally {
       setBankSummaryLoading(false)
+    }
+  }
+
+  const fetchRealizedGains = async () => {
+    if (!portfolioId || realizedGainsSummary !== null) return
+
+    try {
+      const response = await fetch(`/api/portfolio/${portfolioId}/tax-lots?action=realized-gains`)
+      if (response.ok) {
+        const data = await response.json()
+        setRealizedGainsSummary({
+          totalRealizedGain: data.totalRealizedGain || 0,
+          shortTermGain: data.shortTermGain || 0,
+          longTermGain: data.longTermGain || 0,
+        })
+      }
+    } catch (err) {
+      console.error("Error fetching realized gains:", err)
     }
   }
 
@@ -646,6 +645,13 @@ export default function PortfolioDetailPage() {
       fetchBankSummary()
     }
   }, [activeTab, portfolio?.accounts, bankSummary, bankSummaryLoading])
+
+  // Fetch realized gains summary when portfolio loads
+  useEffect(() => {
+    if (portfolio && realizedGainsSummary === null) {
+      fetchRealizedGains()
+    }
+  }, [portfolio])
 
   const handleAddAccount = async () => {
     setSubmitting(true)
@@ -1736,6 +1742,11 @@ export default function PortfolioDetailPage() {
               hasConversion={hasConversion}
               formatCurrency={formatCurrency}
               isLoading={loading || pricesLoading}
+              realizedGains={realizedGainsSummary ? {
+                total: realizedGainsSummary.totalRealizedGain * (summary?.converted?.exchangeRate ?? 1),
+                shortTerm: realizedGainsSummary.shortTermGain * (summary?.converted?.exchangeRate ?? 1),
+                longTerm: realizedGainsSummary.longTermGain * (summary?.converted?.exchangeRate ?? 1),
+              } : null}
             />
           </div>
         )
@@ -2350,59 +2361,6 @@ export default function PortfolioDetailPage() {
               </CardDescription>
             </CardHeader>
             <CardContent>
-              {/* Realized Gains Summary */}
-              {realizedGainsSummary && realizedGainsSummary.totalRealizedGain !== 0 && (() => {
-                // Apply currency conversion if portfolio uses non-USD base currency
-                const exchangeRate = summary?.converted?.exchangeRate ?? 1;
-                const totalGain = realizedGainsSummary.totalRealizedGain * exchangeRate;
-                const shortTermGain = realizedGainsSummary.shortTermGain * exchangeRate;
-                const longTermGain = realizedGainsSummary.longTermGain * exchangeRate;
-
-                return (
-                  <div className="grid gap-3 grid-cols-1 sm:grid-cols-3 mb-6">
-                    <div className="p-4 bg-muted/50 rounded-lg">
-                      <p className="text-sm text-muted-foreground">Total Realized Gain/Loss</p>
-                      <p
-                        className={`text-2xl font-bold ${
-                          totalGain >= 0
-                            ? "text-green-600"
-                            : "text-red-600"
-                        }`}
-                      >
-                        {totalGain >= 0 ? "+" : ""}
-                        {formatCurrency(totalGain, portfolio?.baseCurrency)}
-                      </p>
-                    </div>
-                    <div className="p-4 bg-muted/50 rounded-lg">
-                      <p className="text-sm text-muted-foreground">Short-Term (&lt;1 year)</p>
-                      <p
-                        className={`text-xl font-semibold ${
-                          shortTermGain >= 0
-                            ? "text-green-600"
-                            : "text-red-600"
-                        }`}
-                      >
-                        {shortTermGain >= 0 ? "+" : ""}
-                        {formatCurrency(shortTermGain, portfolio?.baseCurrency)}
-                      </p>
-                    </div>
-                    <div className="p-4 bg-muted/50 rounded-lg">
-                      <p className="text-sm text-muted-foreground">Long-Term (&ge;1 year)</p>
-                      <p
-                        className={`text-xl font-semibold ${
-                          longTermGain >= 0
-                            ? "text-green-600"
-                            : "text-red-600"
-                        }`}
-                      >
-                        {longTermGain >= 0 ? "+" : ""}
-                        {formatCurrency(longTermGain, portfolio?.baseCurrency)}
-                      </p>
-                    </div>
-                  </div>
-                );
-              })()}
-
               {/* Filters */}
               <div className="grid grid-cols-2 gap-3 md:flex md:flex-wrap md:gap-4 mb-6">
                 <div className="space-y-1">

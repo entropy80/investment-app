@@ -42,6 +42,11 @@ export interface PortfolioVisualizationProps {
   hasConversion: boolean
   formatCurrency: (value: number, currency: string) => string
   isLoading?: boolean
+  realizedGains?: {
+    total: number
+    shortTerm: number
+    longTerm: number
+  } | null
 }
 
 export interface AssetAllocationChartProps {
@@ -67,6 +72,11 @@ export interface PortfolioBreakdownProps {
     cashHoldings: number
     totalValue: number
   }
+  realizedGains?: {
+    total: number
+    shortTerm: number
+    longTerm: number
+  } | null
 }
 
 export interface ChartLegendProps {

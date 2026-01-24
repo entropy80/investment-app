@@ -6,6 +6,15 @@ All notable changes to the Investment App are documented here. Entries are order
 
 
 ## 2026-01-24
+- **Moved Realized Gains to Portfolio Summary card**
+  - Realized Gains (Total, Short-Term, Long-Term) now displays in Portfolio Breakdown section
+  - Previously shown only in Transactions tab, now visible on main portfolio view
+  - Short-Term and Long-Term gains are nested/indented under the main Realized Gain/Loss row
+  - Added dedicated `fetchRealizedGains()` function with useEffect on portfolio load
+  - Removed parallel fetch from `fetchTransactions()` - realized gains fetched independently
+  - Condensed Portfolio Breakdown spacing to accommodate new rows
+  - Currency conversion applied to realized gains values
+  - Files: `src/app/(dashboard)/dashboard/portfolio/[id]/page.tsx`, `src/components/portfolio/portfolio-breakdown.tsx`, `src/components/portfolio/portfolio-visualization.tsx`, `src/components/portfolio/types.ts`
 - **Moved Bank Summary to Accounts tab**
   - Bank Account Summary card now displays in Accounts tab instead of Transactions tab
   - Only shows when portfolio has bank accounts
