@@ -1,6 +1,7 @@
 import { getServerSession } from "next-auth"
 import { redirect } from "next/navigation"
 import Link from "next/link"
+import { Trees } from "lucide-react"
 import { authOptions } from "@/lib/auth"
 import { SignOutButton } from "@/components/auth/sign-out-button"
 import { MobileNav } from "@/components/navigation/mobile-nav"
@@ -26,7 +27,8 @@ export default async function DashboardLayout({
         <div className="container mx-auto px-4">
           <div className="flex h-16 items-center justify-between">
             {/* Logo */}
-            <Link href="/dashboard" className="font-bold text-xl">
+            <Link href="/dashboard" className="font-bold text-xl flex items-center gap-2">
+              <Trees className="h-5 w-5" />
               Investment App
             </Link>
 

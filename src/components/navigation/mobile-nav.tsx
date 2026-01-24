@@ -1,7 +1,7 @@
 'use client'
 
 import Link from 'next/link'
-import { Menu, FileText, Video, Star } from 'lucide-react'
+import { Menu, FileText, Video, Star, Trees } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { SignOutButton } from '@/components/auth/sign-out-button'
 import {
@@ -41,7 +41,8 @@ export function MobileNav({ user }: MobileNavProps) {
         <SheetContent side="right" className="w-[300px]">
           <SheetHeader>
             <SheetTitle>
-              <Link href="/dashboard" className="font-bold text-xl">
+              <Link href="/dashboard" className="font-bold text-xl flex items-center gap-2">
+                <Trees className="h-5 w-5" />
                 Investment App
               </Link>
             </SheetTitle>

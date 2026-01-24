@@ -2,7 +2,7 @@
 
 import Link from 'next/link'
 import { useSession } from 'next-auth/react'
-import { Menu, FileText, Video, Star } from 'lucide-react'
+import { Menu, FileText, Video, Star, Trees } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { SignOutButton } from '@/components/auth/sign-out-button'
 import {
@@ -55,7 +55,8 @@ export function Navbar() {
     <nav className="border-b">
       <div className="container mx-auto px-4 h-16 flex items-center justify-between">
         {/* Logo */}
-        <Link href={isAuthenticated ? "/dashboard" : "/"} className="font-bold text-xl">
+        <Link href={isAuthenticated ? "/dashboard" : "/"} className="font-bold text-xl flex items-center gap-2">
+          <Trees className="h-5 w-5" />
           Investment App
         </Link>
 
@@ -162,7 +163,8 @@ export function Navbar() {
               <SheetContent side="right" className="w-[300px]">
                 <SheetHeader>
                   <SheetTitle>
-                    <Link href={isAuthenticated ? "/dashboard" : "/"} className="font-bold text-xl">
+                    <Link href={isAuthenticated ? "/dashboard" : "/"} className="font-bold text-xl flex items-center gap-2">
+                      <Trees className="h-5 w-5" />
                       Investment App
                     </Link>
                   </SheetTitle>
