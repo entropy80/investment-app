@@ -185,6 +185,9 @@ export default function PortfolioDetailPage() {
   // Expanded accounts state for accordion-style cards
   const [expandedAccounts, setExpandedAccounts] = useState<Set<string>>(new Set())
 
+  // Active tab state for controlled tabs
+  const [activeTab, setActiveTab] = useState<string>("holdings")
+
   const toggleAccountExpanded = (accountId: string) => {
     setExpandedAccounts(prev => {
       const next = new Set(prev)
@@ -632,6 +635,17 @@ export default function PortfolioDetailPage() {
       fetchPrices()
     }
   }, [portfolio])
+
+  // Fetch bank summary when accounts tab is active and has bank accounts
+  useEffect(() => {
+    const hasBankAccounts = portfolio?.accounts?.some(
+      (a: any) => a.accountType === 'BANK'
+    )
+
+    if (activeTab === 'accounts' && hasBankAccounts && !bankSummary && !bankSummaryLoading) {
+      fetchBankSummary()
+    }
+  }, [activeTab, portfolio?.accounts, bankSummary, bankSummaryLoading])
 
   const handleAddAccount = async () => {
     setSubmitting(true)
@@ -1728,7 +1742,7 @@ export default function PortfolioDetailPage() {
       })()}
 
       {/* Tabs for Holdings, Allocation, Accounts, Transactions, etc. */}
-      <Tabs defaultValue="holdings">
+      <Tabs value={activeTab} onValueChange={setActiveTab}>
         <TabsList className="w-full justify-start overflow-x-auto scrollbar-hide">
           <TabsTrigger value="holdings" className="flex items-center gap-1 sm:gap-2 px-2 sm:px-3">
             <PieChart className="h-4 w-4 shrink-0" />
@@ -1750,9 +1764,6 @@ export default function PortfolioDetailPage() {
             onClick={() => {
               if (transactions.length === 0) {
                 fetchTransactions(1, true)
-              }
-              if (!bankSummary && !bankSummaryLoading) {
-                fetchBankSummary()
               }
             }}
           >
@@ -1811,8 +1822,26 @@ export default function PortfolioDetailPage() {
             }
 
             return (
-              <div className="space-y-4">
-                {/* Closed positions toggle for accounts */}
+              <>
+                {/* Bank Account Summary - only show if there are bank accounts */}
+                {(() => {
+                  const hasBankAccounts = portfolio?.accounts?.some(
+                    (a: any) => a.accountType === 'BANK'
+                  )
+                  if (!hasBankAccounts) return null
+
+                  return (
+                    <BankSummary
+                      data={bankSummary}
+                      currency={portfolio?.baseCurrency || "USD"}
+                      formatCurrency={formatCurrency}
+                      isLoading={bankSummaryLoading}
+                    />
+                  )
+                })()}
+
+                <div className="space-y-4">
+                  {/* Closed positions toggle for accounts */}
                 {(() => {
                   const allHoldings = accountsToShow?.flatMap((a: any) => a.holdings) || []
                   const closedCount = allHoldings.filter((h: any) => Number(h.quantity) === 0).length
@@ -2011,7 +2040,8 @@ export default function PortfolioDetailPage() {
                     )
                   })}
                 </div>
-              </div>
+                </div>
+              </>
             )
           })()}
         </TabsContent>
@@ -2320,14 +2350,6 @@ export default function PortfolioDetailPage() {
               </CardDescription>
             </CardHeader>
             <CardContent>
-              {/* Bank Account Summary - Income vs Expenses */}
-              <BankSummary
-                data={bankSummary}
-                currency={portfolio?.baseCurrency || "USD"}
-                formatCurrency={formatCurrency}
-                isLoading={bankSummaryLoading}
-              />
-
               {/* Realized Gains Summary */}
               {realizedGainsSummary && realizedGainsSummary.totalRealizedGain !== 0 && (() => {
                 // Apply currency conversion if portfolio uses non-USD base currency

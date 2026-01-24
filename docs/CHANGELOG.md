@@ -6,6 +6,12 @@ All notable changes to the Investment App are documented here. Entries are order
 
 
 ## 2026-01-24
+- **Moved Bank Summary to Accounts tab**
+  - Bank Account Summary card now displays in Accounts tab instead of Transactions tab
+  - Only shows when portfolio has bank accounts
+  - Added useEffect-based data fetching when Accounts tab becomes active
+  - Converted Tabs to controlled component with activeTab state for proper tab tracking
+  - File: `src/app/(dashboard)/dashboard/portfolio/[id]/page.tsx`
 - **Reordered portfolio page tabs**
   - New order: Holdings, Allocation, Accounts, Transactions, Documents, Tax Reports
   - Holdings tab is now the default view when visiting a portfolio
