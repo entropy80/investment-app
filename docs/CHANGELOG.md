@@ -20,6 +20,7 @@ All notable changes to the Investment App are documented here. Entries are order
 - **Redesigned landing page hero mockup with asset allocation visualization**
   - Replaced holdings list mockup with donut chart and portfolio breakdown
   - CSS-based donut chart using conic-gradient (no Recharts dependency, server-renderable)
+  - Donut ring thickness matches portfolio page chart (innerRadius 55%, outerRadius 85%)
   - Uses same `--chart-*` CSS variables as real portfolio for theme consistency
   - Two-column layout: Asset Allocation chart with legend, Portfolio Breakdown summary
   - Sample data: Stocks 42%, ETFs 28%, Crypto 18%, Cash 12%

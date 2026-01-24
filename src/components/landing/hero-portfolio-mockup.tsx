@@ -36,8 +36,8 @@ function DonutChart() {
         className="absolute inset-0 rounded-full"
         style={{ background: gradient }}
       />
-      {/* Inner circle to create donut effect */}
-      <div className="absolute inset-[30%] rounded-full bg-card" />
+      {/* Inner circle to create donut effect - matches portfolio chart ratio (55/85 ≈ 65%) */}
+      <div className="absolute inset-[17.5%] rounded-full bg-card" />
     </div>
   )
 }
