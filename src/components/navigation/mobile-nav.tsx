@@ -42,7 +42,7 @@ export function MobileNav({ user }: MobileNavProps) {
           <SheetHeader>
             <SheetTitle>
               <Link href="/dashboard" className="font-bold text-xl flex items-center gap-2">
-                <Trees className="h-5 w-5" />
+                <Trees className="h-6 w-6" />
                 Investment App
               </Link>
             </SheetTitle>

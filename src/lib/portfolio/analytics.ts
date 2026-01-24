@@ -701,12 +701,38 @@ export interface CategorySummary {
   count: number
 }
 
+export interface MatchedTransfer {
+  fromAccount: string
+  fromAccountName: string
+  toAccount: string
+  toAccountName: string
+  amount: number
+  date: Date
+  confidence: 'high' | 'medium' | 'low'
+}
+
+export interface InternalTransferSummary {
+  fromAccountName: string
+  toAccountName: string
+  totalAmount: number
+  count: number
+}
+
 export interface BankSummaryData {
+  // Original fields (for backward compatibility)
   totalIncome: number
   totalExpenses: number
   netCashFlow: number
   incomeByCategory: CategorySummary[]
   expensesByCategory: CategorySummary[]
+
+  // New fields for enhanced analysis
+  trueIncome: number              // Excludes internal transfers
+  trueExpenses: number            // Excludes transfers to own accounts
+  investmentContributions: number // Transfers to brokerage accounts
+  internalTransfers: MatchedTransfer[]
+  internalTransferSummary: InternalTransferSummary[]
+  trueSavingsRate: number | null  // Based on true income/expenses
 }
 
 // Income categories
@@ -719,8 +745,136 @@ const INCOME_CATEGORIES = [
   'OTHER_INCOME',
 ]
 
+// Transfer-related categories and types
+const TRANSFER_CATEGORIES = ['TRANSFER', 'INVESTMENT', 'SAVINGS']
+const TRANSFER_TYPES: PortfolioTransactionType[] = ['DEPOSIT', 'WITHDRAWAL', 'TRANSFER_IN', 'TRANSFER_OUT']
+
+// Investment transaction types - not real income/expenses, just moving assets
+const INVESTMENT_TYPES: PortfolioTransactionType[] = ['BUY', 'SELL', 'DIVIDEND', 'DEPOSIT', 'WITHDRAWAL', 'TRANSFER_IN', 'TRANSFER_OUT']
+
+// Transaction with account info for transfer matching
+interface TransactionWithAccount {
+  id: string
+  accountId: string
+  accountName: string
+  accountType: string
+  amount: number
+  date: Date
+  category: string | null
+  type: PortfolioTransactionType
+}
+
+/**
+ * Match internal transfers between accounts in the same portfolio.
+ * Matches outgoing transactions with incoming ones based on:
+ * - Amount within tolerance (±2% or ±$50)
+ * - Date within ±3 days
+ * - Different accounts
+ */
+function matchInternalTransfers(
+  transactions: TransactionWithAccount[]
+): MatchedTransfer[] {
+  const matchedTransfers: MatchedTransfer[] = []
+  const matchedTxIds = new Set<string>()
+
+  // Get outgoing transactions (negative amounts or transfer categories)
+  const outgoing = transactions.filter(tx => {
+    const isOutgoing = tx.amount < 0
+    const isTransferCategory = tx.category && TRANSFER_CATEGORIES.includes(tx.category)
+    const isTransferType = TRANSFER_TYPES.includes(tx.type)
+    return isOutgoing && (isTransferCategory || isTransferType)
+  })
+
+  // Get incoming transactions (positive amounts)
+  const incoming = transactions.filter(tx => {
+    const isIncoming = tx.amount > 0
+    const isTransferCategory = tx.category && TRANSFER_CATEGORIES.includes(tx.category)
+    const isTransferType = TRANSFER_TYPES.includes(tx.type)
+    return isIncoming && (isTransferCategory || isTransferType)
+  })
+
+  for (const out of outgoing) {
+    if (matchedTxIds.has(out.id)) continue
+
+    const outAmount = Math.abs(out.amount)
+    const outDate = out.date.getTime()
+    const threeDays = 3 * 24 * 60 * 60 * 1000
+
+    // Find matching incoming transaction
+    const candidates = incoming.filter(inc => {
+      if (matchedTxIds.has(inc.id)) return false
+      if (inc.accountId === out.accountId) return false // Must be different account
+
+      const incAmount = inc.amount
+      const incDate = inc.date.getTime()
+
+      // Amount tolerance: ±2% or ±$50 (for fees)
+      const amountDiff = Math.abs(outAmount - incAmount)
+      const percentDiff = amountDiff / outAmount
+      const amountMatches = percentDiff <= 0.02 || amountDiff <= 50
+
+      // Date tolerance: ±3 days
+      const dateDiff = Math.abs(outDate - incDate)
+      const dateMatches = dateDiff <= threeDays
+
+      return amountMatches && dateMatches
+    })
+
+    if (candidates.length > 0) {
+      // Pick best match: closest date, then closest amount
+      candidates.sort((a, b) => {
+        const dateDiffA = Math.abs(a.date.getTime() - outDate)
+        const dateDiffB = Math.abs(b.date.getTime() - outDate)
+        if (dateDiffA !== dateDiffB) return dateDiffA - dateDiffB
+
+        const amountDiffA = Math.abs(a.amount - outAmount)
+        const amountDiffB = Math.abs(b.amount - outAmount)
+        return amountDiffA - amountDiffB
+      })
+
+      const match = candidates[0]
+      matchedTxIds.add(out.id)
+      matchedTxIds.add(match.id)
+
+      // Determine confidence
+      const amountDiff = Math.abs(Math.abs(out.amount) - match.amount)
+      const dateDiff = Math.abs(out.date.getTime() - match.date.getTime())
+      const oneDay = 24 * 60 * 60 * 1000
+
+      let confidence: 'high' | 'medium' | 'low' = 'low'
+      if (amountDiff === 0 && dateDiff <= oneDay) {
+        confidence = 'high'
+      } else if (amountDiff <= 50 && dateDiff <= 2 * oneDay) {
+        confidence = 'medium'
+      }
+
+      matchedTransfers.push({
+        fromAccount: out.accountId,
+        fromAccountName: out.accountName,
+        toAccount: match.accountId,
+        toAccountName: match.accountName,
+        amount: outAmount,
+        date: out.date,
+        confidence,
+      })
+    }
+  }
+
+  return matchedTransfers
+}
+
+/**
+ * Check if an account is a brokerage/investment account
+ */
+function isBrokerageAccount(accountType: string | undefined): boolean {
+  if (!accountType) return false
+  const brokerageTypes = ['BROKERAGE', 'RETIREMENT', 'IRA', '401K', 'INVESTMENT']
+  return brokerageTypes.some(t => accountType.toUpperCase().includes(t))
+}
+
 /**
  * Calculate bank account summary - income vs expenses by category
+ * Enhanced to detect and exclude internal transfers
  */
 export async function calculateBankSummary(
   portfolioId: string,
@@ -728,10 +882,14 @@ export async function calculateBankSummary(
   startDate?: Date,
   endDate?: Date
 ): Promise<BankSummaryData | null> {
-  // Get portfolio to verify access
+  // Get portfolio with accounts to verify access
   const portfolio = await prisma.portfolio.findFirst({
     where: { id: portfolioId, userId },
-    select: { id: true, accounts: { select: { id: true } } },
+    include: {
+      accounts: {
+        select: { id: true, name: true, accountType: true },
+      },
+    },
   })
 
   if (!portfolio) {
@@ -739,9 +897,10 @@ export async function calculateBankSummary(
   }
 
   const accountIds = portfolio.accounts.map((a) => a.id)
+  const accountMap = new Map(portfolio.accounts.map(a => [a.id, a]))
 
   // Build date filter
-  const dateFilter: any = {}
+  const dateFilter: { gte?: Date; lte?: Date } = {}
   if (startDate) {
     dateFilter.gte = startDate
   }
@@ -749,34 +908,115 @@ export async function calculateBankSummary(
     dateFilter.lte = endDate
   }
 
-  // Get all categorized transactions (bank transactions have categories)
-  const transactions = await prisma.portfolioTransaction.findMany({
+  // Get ALL transactions (not just categorized) for transfer detection
+  const rawTransactions = await prisma.portfolioTransaction.findMany({
     where: {
       accountId: { in: accountIds },
-      category: { not: null },
       ...(Object.keys(dateFilter).length > 0 && { date: dateFilter }),
     },
     select: {
+      id: true,
+      accountId: true,
       category: true,
       amount: true,
       type: true,
+      date: true,
     },
   })
 
-  // Aggregate by category
+  // Enrich transactions with account info
+  const transactions: TransactionWithAccount[] = rawTransactions.map(tx => {
+    const account = accountMap.get(tx.accountId)
+    return {
+      id: tx.id,
+      accountId: tx.accountId,
+      accountName: account?.name || 'Unknown',
+      accountType: account?.accountType || 'UNKNOWN',
+      amount: Number(tx.amount),
+      date: tx.date,
+      category: tx.category,
+      type: tx.type,
+    }
+  })
+
+  // Match internal transfers
+  const matchedTransfers = matchInternalTransfers(transactions)
+  const matchedTxIds = new Set<string>()
+
+  // Create a set of all matched transaction IDs
+  // We need to find the actual transaction IDs that were matched
+  for (const transfer of matchedTransfers) {
+    // Find the outgoing and incoming transactions that match this transfer
+    const outgoing = transactions.find(tx =>
+      tx.accountId === transfer.fromAccount &&
+      Math.abs(tx.amount) === transfer.amount &&
+      tx.date.getTime() === transfer.date.getTime()
+    )
+    if (outgoing) matchedTxIds.add(outgoing.id)
+
+    // Find corresponding incoming (within tolerance)
+    const incoming = transactions.find(tx =>
+      tx.accountId === transfer.toAccount &&
+      tx.amount > 0 &&
+      Math.abs(tx.amount - transfer.amount) <= Math.max(transfer.amount * 0.02, 50) &&
+      Math.abs(tx.date.getTime() - transfer.date.getTime()) <= 3 * 24 * 60 * 60 * 1000
+    )
+    if (incoming) matchedTxIds.add(incoming.id)
+  }
+
+  // Calculate investment contributions (transfers to brokerage accounts)
+  let investmentContributions = 0
+  for (const transfer of matchedTransfers) {
+    const toAccount = accountMap.get(transfer.toAccount)
+    if (toAccount && isBrokerageAccount(toAccount.accountType)) {
+      investmentContributions += transfer.amount
+    }
+  }
+
+  // Create internal transfer summary (grouped by from/to account pairs)
+  const transferSummaryMap = new Map<string, InternalTransferSummary>()
+  for (const transfer of matchedTransfers) {
+    const key = `${transfer.fromAccountName}→${transfer.toAccountName}`
+    const existing = transferSummaryMap.get(key) || {
+      fromAccountName: transfer.fromAccountName,
+      toAccountName: transfer.toAccountName,
+      totalAmount: 0,
+      count: 0,
+    }
+    existing.totalAmount += transfer.amount
+    existing.count += 1
+    transferSummaryMap.set(key, existing)
+  }
+  const internalTransferSummary = Array.from(transferSummaryMap.values())
+    .sort((a, b) => b.totalAmount - a.totalAmount)
+
+  // Aggregate by category, separating matched transfers
   const categoryMap = new Map<string, { amount: number; count: number }>()
+  const trueCategoryMap = new Map<string, { amount: number; count: number }>()
 
   for (const tx of transactions) {
     if (!tx.category) continue
 
+    // Original totals (include everything)
     const existing = categoryMap.get(tx.category) || { amount: 0, count: 0 }
     categoryMap.set(tx.category, {
-      amount: existing.amount + Number(tx.amount),
+      amount: existing.amount + tx.amount,
       count: existing.count + 1,
     })
+
+    // True totals (exclude matched transfers AND investment transaction types)
+    // Investment types like BUY, SELL, DEPOSIT, WITHDRAWAL are just moving assets, not real income/expenses
+    const isInvestmentType = INVESTMENT_TYPES.includes(tx.type)
+    if (!matchedTxIds.has(tx.id) && !isInvestmentType) {
+      const trueExisting = trueCategoryMap.get(tx.category) || { amount: 0, count: 0 }
+      trueCategoryMap.set(tx.category, {
+        amount: trueExisting.amount + tx.amount,
+        count: trueExisting.count + 1,
+      })
+    }
   }
 
-  // Separate income and expenses
+  // Separate income and expenses (original logic for backward compatibility)
   const incomeByCategory: CategorySummary[] = []
   const expensesByCategory: CategorySummary[] = []
   let totalIncome = 0
@@ -798,11 +1038,48 @@ export async function calculateBankSummary(
     }
   }
 
+  // Calculate true income and expenses (excluding matched transfers)
+  let trueIncome = 0
+  let trueExpenses = 0
+
+  for (const [category, data] of trueCategoryMap.entries()) {
+    // Skip transfer categories entirely - they're not real income or expenses
+    if (TRANSFER_CATEGORIES.includes(category)) {
+      continue
+    }
+
+    if (INCOME_CATEGORIES.includes(category)) {
+      // Explicitly defined income categories
+      trueIncome += data.amount
+    } else if (data.amount > 0) {
+      // Positive amounts in non-transfer categories (could be refunds, etc.)
+      // Only count as income if it's a recognized income pattern
+      trueIncome += data.amount
+    } else {
+      // Negative amounts = expenses
+      trueExpenses += data.amount
+    }
+  }
+
+  // Calculate true savings rate
+  const trueSavingsRate = trueIncome > 0
+    ? ((trueIncome + trueExpenses) / trueIncome) * 100
+    : null
+
   return {
+    // Original fields
     totalIncome,
     totalExpenses,
-    netCashFlow: totalIncome + totalExpenses, // expenses are negative
+    netCashFlow: totalIncome + totalExpenses,
     incomeByCategory,
     expensesByCategory,
+
+    // Enhanced fields
+    trueIncome,
+    trueExpenses,
+    investmentContributions,
+    internalTransfers: matchedTransfers,
+    internalTransferSummary,
+    trueSavingsRate,
   }
 }

@@ -6,6 +6,16 @@ All notable changes to the Investment App are documented here. Entries are order
 
 
 ## 2026-01-24
+- **Enhanced Bank Account Summary with internal transfer detection**
+  - Added transfer matching algorithm to detect internal transfers between accounts
+  - Matches outgoing/incoming transactions within ±2% or ±$50 (for wire fees) and ±3 days
+  - New "Invested" metric card (purple) showing total contributions to brokerage accounts
+  - New collapsible "Internal Transfers" section showing matched transfer pairs grouped by account
+  - True income/expenses now exclude: TRANSFER/INVESTMENT/SAVINGS categories, and investment transaction types (BUY, SELL, DIVIDEND, DEPOSIT, WITHDRAWAL, TRANSFER_IN, TRANSFER_OUT)
+  - Top Expenses chart now excludes transfer categories (INVESTMENT, TRANSFER, SAVINGS)
+  - Summary grid updated from 4 to 5 columns: Income, Expenses, Net Flow, Invested, Savings Rate
+  - Added confidence levels for matched transfers: high (exact amount, ±1 day), medium (±$50, ±2 days), low (±2%, ±3 days)
+  - Files: `src/lib/portfolio/analytics.ts`, `src/components/portfolio/bank-summary.tsx`
 - **Moved Realized Gains to Portfolio Summary card**
   - Realized Gains (Total, Short-Term, Long-Term) now displays in Portfolio Breakdown section
   - Previously shown only in Transactions tab, now visible on main portfolio view

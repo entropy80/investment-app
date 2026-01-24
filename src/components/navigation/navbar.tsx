@@ -56,7 +56,7 @@ export function Navbar() {
       <div className="container mx-auto px-4 h-16 flex items-center justify-between">
         {/* Logo */}
         <Link href={isAuthenticated ? "/dashboard" : "/"} className="font-bold text-xl flex items-center gap-2">
-          <Trees className="h-5 w-5" />
+          <Trees className="h-6 w-6" />
           Investment App
         </Link>
 
@@ -164,7 +164,7 @@ export function Navbar() {
                 <SheetHeader>
                   <SheetTitle>
                     <Link href={isAuthenticated ? "/dashboard" : "/"} className="font-bold text-xl flex items-center gap-2">
-                      <Trees className="h-5 w-5" />
+                      <Trees className="h-6 w-6" />
                       Investment App
                     </Link>
                   </SheetTitle>
