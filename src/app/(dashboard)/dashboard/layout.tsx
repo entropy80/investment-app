@@ -28,7 +28,7 @@ export default async function DashboardLayout({
           <div className="flex h-16 items-center justify-between">
             {/* Logo */}
             <Link href="/dashboard" className="font-bold text-xl flex items-center gap-2">
-              <Trees className="h-5 w-5" />
+              <Trees className="h-6 w-6" />
               Investment App
             </Link>
 
