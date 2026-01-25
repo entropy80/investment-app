@@ -7,6 +7,7 @@ import {
   PortfolioTransactionType,
 } from '@prisma/client'
 import Decimal from 'decimal.js'
+import { getExchangeRate } from '@/lib/currency/currency-service'
 
 // ============================================================================
 // Type Definitions
@@ -706,7 +707,10 @@ export interface MatchedTransfer {
   fromAccountName: string
   toAccount: string
   toAccountName: string
-  amount: number
+  amount: number      // Original amount in source currency
+  amountUSD: number   // Amount converted to USD for consistent calculations
+  fromCurrency: string
+  toCurrency: string
   date: Date
   confidence: 'high' | 'medium' | 'low'
 }
@@ -747,7 +751,12 @@ const INCOME_CATEGORIES = [
 
 // Transfer-related categories and types
 const TRANSFER_CATEGORIES = ['TRANSFER', 'INVESTMENT', 'SAVINGS']
-const TRANSFER_TYPES: PortfolioTransactionType[] = ['DEPOSIT', 'WITHDRAWAL', 'TRANSFER_IN', 'TRANSFER_OUT']
+// Explicit transfer types - these are always considered potential internal transfers
+const EXPLICIT_TRANSFER_TYPES: PortfolioTransactionType[] = ['TRANSFER_IN', 'TRANSFER_OUT']
+// Generic types that are only considered transfers if they have a transfer category
+const GENERIC_TRANSFER_TYPES: PortfolioTransactionType[] = ['DEPOSIT', 'WITHDRAWAL']
+// Combined for backward compatibility
+const TRANSFER_TYPES: PortfolioTransactionType[] = [...EXPLICIT_TRANSFER_TYPES, ...GENERIC_TRANSFER_TYPES]
 
 // Investment transaction types - not real income/expenses, just moving assets
 const INVESTMENT_TYPES: PortfolioTransactionType[] = ['BUY', 'SELL', 'DIVIDEND', 'DEPOSIT', 'WITHDRAWAL', 'TRANSFER_IN', 'TRANSFER_OUT']
@@ -759,6 +768,8 @@ interface TransactionWithAccount {
   accountName: string
   accountType: string
   amount: number
+  amountUSD: number  // Amount converted to USD for cross-currency matching
+  currency: string
   date: Date
   category: string | null
   type: PortfolioTransactionType
@@ -767,7 +778,7 @@ interface TransactionWithAccount {
 /**
  * Match internal transfers between accounts in the same portfolio.
  * Matches outgoing transactions with incoming ones based on:
- * - Amount within tolerance (±2% or ±$50)
+ * - Amount in USD within tolerance (±2% or ±$50) - handles cross-currency transfers
  * - Date within ±3 days
  * - Different accounts
  */
@@ -777,26 +788,46 @@ function matchInternalTransfers(
   const matchedTransfers: MatchedTransfer[] = []
   const matchedTxIds = new Set<string>()
 
-  // Get outgoing transactions (negative amounts or transfer categories)
+  // Helper to determine if a transaction is likely an internal transfer
+  // More restrictive to avoid matching regular expenses/income as transfers
+  const isLikelyTransfer = (tx: TransactionWithAccount, expectedDirection: 'outgoing' | 'incoming'): boolean => {
+    const isTransferCategory = tx.category && TRANSFER_CATEGORIES.includes(tx.category)
+    const isGenericType = GENERIC_TRANSFER_TYPES.includes(tx.type)
+
+    // For explicit transfer types, verify the amount sign matches the expected direction
+    // TRANSFER_OUT should have negative amounts, TRANSFER_IN should have positive
+    const isValidTransferOut = tx.type === 'TRANSFER_OUT' && tx.amount < 0
+    const isValidTransferIn = tx.type === 'TRANSFER_IN' && tx.amount > 0
+
+    // Only count explicit transfer types if the amount direction is correct
+    const isValidExplicitTransfer = expectedDirection === 'outgoing' ? isValidTransferOut : isValidTransferIn
+
+    // For generic DEPOSIT/WITHDRAWAL, only consider them transfers if:
+    // 1. They have an explicit transfer category, OR
+    // 2. The USD amount is large enough (>$500) to likely be an intentional transfer
+    const isLargeAmount = Math.abs(tx.amountUSD) >= 500
+    const isValidGenericTransfer = isGenericType && (isTransferCategory || isLargeAmount)
+
+    return isValidExplicitTransfer || isTransferCategory || isValidGenericTransfer
+  }
+
+  // Get outgoing transactions (negative amounts that are likely transfers)
   const outgoing = transactions.filter(tx => {
     const isOutgoing = tx.amount < 0
-    const isTransferCategory = tx.category && TRANSFER_CATEGORIES.includes(tx.category)
-    const isTransferType = TRANSFER_TYPES.includes(tx.type)
-    return isOutgoing && (isTransferCategory || isTransferType)
+    return isOutgoing && isLikelyTransfer(tx, 'outgoing')
   })
 
-  // Get incoming transactions (positive amounts)
+  // Get incoming transactions (positive amounts that are likely transfers)
   const incoming = transactions.filter(tx => {
     const isIncoming = tx.amount > 0
-    const isTransferCategory = tx.category && TRANSFER_CATEGORIES.includes(tx.category)
-    const isTransferType = TRANSFER_TYPES.includes(tx.type)
-    return isIncoming && (isTransferCategory || isTransferType)
+    return isIncoming && isLikelyTransfer(tx, 'incoming')
   })
 
   for (const out of outgoing) {
     if (matchedTxIds.has(out.id)) continue
 
-    const outAmount = Math.abs(out.amount)
+    // Use USD amount for matching to handle cross-currency transfers
+    const outAmountUSD = Math.abs(out.amountUSD)
     const outDate = out.date.getTime()
     const threeDays = 3 * 24 * 60 * 60 * 1000
 
@@ -805,12 +836,13 @@ function matchInternalTransfers(
       if (matchedTxIds.has(inc.id)) return false
       if (inc.accountId === out.accountId) return false // Must be different account
 
-      const incAmount = inc.amount
+      // Use USD amount for comparison to handle cross-currency transfers
+      const incAmountUSD = inc.amountUSD
       const incDate = inc.date.getTime()
 
-      // Amount tolerance: ±2% or ±$50 (for fees)
-      const amountDiff = Math.abs(outAmount - incAmount)
-      const percentDiff = amountDiff / outAmount
+      // Amount tolerance: ±2% or ±$50 (for fees) - based on USD amounts
+      const amountDiff = Math.abs(outAmountUSD - incAmountUSD)
+      const percentDiff = amountDiff / outAmountUSD
       const amountMatches = percentDiff <= 0.02 || amountDiff <= 50
 
       // Date tolerance: ±3 days
@@ -821,14 +853,14 @@ function matchInternalTransfers(
     })
 
     if (candidates.length > 0) {
-      // Pick best match: closest date, then closest amount
+      // Pick best match: closest date, then closest USD amount
       candidates.sort((a, b) => {
         const dateDiffA = Math.abs(a.date.getTime() - outDate)
         const dateDiffB = Math.abs(b.date.getTime() - outDate)
         if (dateDiffA !== dateDiffB) return dateDiffA - dateDiffB
 
-        const amountDiffA = Math.abs(a.amount - outAmount)
-        const amountDiffB = Math.abs(b.amount - outAmount)
+        const amountDiffA = Math.abs(a.amountUSD - outAmountUSD)
+        const amountDiffB = Math.abs(b.amountUSD - outAmountUSD)
         return amountDiffA - amountDiffB
       })
 
@@ -836,15 +868,17 @@ function matchInternalTransfers(
       matchedTxIds.add(out.id)
       matchedTxIds.add(match.id)
 
-      // Determine confidence
-      const amountDiff = Math.abs(Math.abs(out.amount) - match.amount)
+      // Determine confidence based on USD amounts
+      const amountDiffUSD = Math.abs(outAmountUSD - match.amountUSD)
       const dateDiff = Math.abs(out.date.getTime() - match.date.getTime())
       const oneDay = 24 * 60 * 60 * 1000
 
       let confidence: 'high' | 'medium' | 'low' = 'low'
-      if (amountDiff === 0 && dateDiff <= oneDay) {
+      if (amountDiffUSD <= 5 && dateDiff <= oneDay) {
+        // High confidence: amounts within $5 and same day
         confidence = 'high'
-      } else if (amountDiff <= 50 && dateDiff <= 2 * oneDay) {
+      } else if (amountDiffUSD <= 50 && dateDiff <= 2 * oneDay) {
+        // Medium confidence: amounts within $50 and 2 days
         confidence = 'medium'
       }
 
@@ -853,7 +887,10 @@ function matchInternalTransfers(
         fromAccountName: out.accountName,
         toAccount: match.accountId,
         toAccountName: match.accountName,
-        amount: outAmount,
+        amount: Math.abs(out.amount),
+        amountUSD: outAmountUSD,
+        fromCurrency: out.currency,
+        toCurrency: match.currency,
         date: out.date,
         confidence,
       })
@@ -919,20 +956,48 @@ export async function calculateBankSummary(
       accountId: true,
       category: true,
       amount: true,
+      currency: true,
       type: true,
       date: true,
     },
   })
 
-  // Enrich transactions with account info
+  // Get unique currencies used in transactions for exchange rate lookup
+  const uniqueCurrencies = [...new Set(rawTransactions.map(tx => tx.currency))]
+
+  // Fetch exchange rates for all currencies to USD
+  const exchangeRates = new Map<string, number>()
+  exchangeRates.set('USD', 1) // USD to USD is 1:1
+
+  for (const currency of uniqueCurrencies) {
+    if (currency !== 'USD') {
+      const rate = await getExchangeRate(currency, 'USD')
+      if (rate) {
+        exchangeRates.set(currency, rate.rate)
+      } else {
+        // Fallback: if no rate found, use 1 (will only match same-currency transfers)
+        console.warn(`No exchange rate found for ${currency} to USD, using 1:1`)
+        exchangeRates.set(currency, 1)
+      }
+    }
+  }
+
+  // Enrich transactions with account info and USD-converted amounts
   const transactions: TransactionWithAccount[] = rawTransactions.map(tx => {
     const account = accountMap.get(tx.accountId)
+    const amount = Number(tx.amount)
+    const currency = tx.currency || 'USD'
+    const rate = exchangeRates.get(currency) || 1
+    const amountUSD = amount * rate
+
     return {
       id: tx.id,
       accountId: tx.accountId,
       accountName: account?.name || 'Unknown',
       accountType: account?.accountType || 'UNKNOWN',
-      amount: Number(tx.amount),
+      amount,
+      amountUSD,
+      currency,
       date: tx.date,
       category: tx.category,
       type: tx.type,
@@ -946,7 +1011,7 @@ export async function calculateBankSummary(
   // Create a set of all matched transaction IDs
   // We need to find the actual transaction IDs that were matched
   for (const transfer of matchedTransfers) {
-    // Find the outgoing and incoming transactions that match this transfer
+    // Find the outgoing transaction that matches this transfer (by original amount and date)
     const outgoing = transactions.find(tx =>
       tx.accountId === transfer.fromAccount &&
       Math.abs(tx.amount) === transfer.amount &&
@@ -954,26 +1019,26 @@ export async function calculateBankSummary(
     )
     if (outgoing) matchedTxIds.add(outgoing.id)
 
-    // Find corresponding incoming (within tolerance)
+    // Find corresponding incoming (within tolerance using USD amounts for cross-currency matching)
     const incoming = transactions.find(tx =>
       tx.accountId === transfer.toAccount &&
       tx.amount > 0 &&
-      Math.abs(tx.amount - transfer.amount) <= Math.max(transfer.amount * 0.02, 50) &&
+      Math.abs(tx.amountUSD - transfer.amountUSD) <= Math.max(transfer.amountUSD * 0.02, 50) &&
       Math.abs(tx.date.getTime() - transfer.date.getTime()) <= 3 * 24 * 60 * 60 * 1000
     )
     if (incoming) matchedTxIds.add(incoming.id)
   }
 
-  // Calculate investment contributions (transfers to brokerage accounts)
+  // Calculate investment contributions (transfers to brokerage accounts) - use USD for consistency
   let investmentContributions = 0
   for (const transfer of matchedTransfers) {
     const toAccount = accountMap.get(transfer.toAccount)
     if (toAccount && isBrokerageAccount(toAccount.accountType)) {
-      investmentContributions += transfer.amount
+      investmentContributions += transfer.amountUSD
     }
   }
 
-  // Create internal transfer summary (grouped by from/to account pairs)
+  // Create internal transfer summary (grouped by from/to account pairs) - use USD for consistency
   const transferSummaryMap = new Map<string, InternalTransferSummary>()
   for (const transfer of matchedTransfers) {
     const key = `${transfer.fromAccountName}→${transfer.toAccountName}`
@@ -983,7 +1048,7 @@ export async function calculateBankSummary(
       totalAmount: 0,
       count: 0,
     }
-    existing.totalAmount += transfer.amount
+    existing.totalAmount += transfer.amountUSD
     existing.count += 1
     transferSummaryMap.set(key, existing)
   }

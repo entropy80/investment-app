@@ -5,6 +5,27 @@ All notable changes to the Investment App are documented here. Entries are order
 ---
 
 
+## 2026-01-25
+- **Cross-currency internal transfer detection**
+  - Transfer matching now converts amounts to USD before comparison
+  - Enables detection of transfers between accounts with different currencies (e.g., KWD bank → USD brokerage)
+  - Uses exchange rates from database for accurate conversion
+  - Added `amountUSD`, `fromCurrency`, `toCurrency` fields to `MatchedTransfer` interface
+  - Investment contributions ("Invested" card) now calculated in USD for consistency
+  - File: `src/lib/portfolio/analytics.ts`
+- **Stricter transfer matching to reduce false positives**
+  - `TRANSFER_OUT` transactions now require negative amount to match as outgoing
+  - `TRANSFER_IN` transactions now require positive amount to match as incoming
+  - Generic `DEPOSIT`/`WITHDRAWAL` only considered transfers if: has transfer category OR amount ≥$500 USD
+  - Prevents incorrect matching of small SWIFT fees, subscription payments, and other non-transfer transactions
+  - File: `src/lib/portfolio/analytics.ts`
+- **Simplified Bank Account Summary component**
+  - Removed "Top Expenses by Category" horizontal bar chart
+  - Removed "Income Sources" section with category tags
+  - Component now shows only: 5 summary cards (Income, Expenses, Net Flow, Invested, Savings Rate) + collapsible Internal Transfers section
+  - Removed unused recharts imports and category label mappings
+  - File: `src/components/portfolio/bank-summary.tsx`
+
 ## 2026-01-24
 - **Enhanced Bank Account Summary with internal transfer detection**
   - Added transfer matching algorithm to detect internal transfers between accounts
