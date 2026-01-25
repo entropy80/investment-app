@@ -175,21 +175,21 @@ export function BankSummary({ data, currency, formatCurrency, isLoading }: BankS
           </button>
 
           {showTransfers && (
-            <div className="px-3 pb-3 space-y-2">
+            <div className="px-3 pb-3 space-y-2 overflow-x-auto">
               {internalTransferSummary.map((transfer, index) => (
                 <div
                   key={index}
-                  className="flex items-center justify-between p-2 bg-muted/30 rounded text-sm"
+                  className="flex items-center justify-between p-2 bg-muted/30 rounded text-sm min-w-fit gap-4"
                 >
-                  <div className="flex items-center gap-2">
+                  <div className="flex items-center gap-2 whitespace-nowrap">
                     <span className="font-medium">{transfer.fromAccountName}</span>
-                    <ArrowRight className="h-3 w-3 text-muted-foreground" />
+                    <ArrowRight className="h-3 w-3 text-muted-foreground shrink-0" />
                     <span className="font-medium">{transfer.toAccountName}</span>
                     <span className="text-muted-foreground">
-                      ({transfer.count} {transfer.count === 1 ? 'transfer' : 'transfers'})
+                      ({transfer.count})
                     </span>
                   </div>
-                  <span className="font-medium">
+                  <span className="font-medium whitespace-nowrap">
                     {formatCurrency(transfer.totalAmount, currency)}
                   </span>
                 </div>

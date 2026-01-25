@@ -1755,23 +1755,21 @@ export default function PortfolioDetailPage() {
       {/* Tabs for Holdings, Allocation, Accounts, Transactions, etc. */}
       <Tabs value={activeTab} onValueChange={setActiveTab}>
         <TabsList className="w-full justify-start overflow-x-auto scrollbar-hide">
-          <TabsTrigger value="holdings" className="flex items-center gap-1 sm:gap-2 px-2 sm:px-3">
+          <TabsTrigger value="holdings" className="flex items-center gap-2 px-2 sm:px-3">
             <PieChart className="h-4 w-4 shrink-0" />
-            <span>Holdings</span>
+            <span className="hidden sm:inline">Holdings</span>
           </TabsTrigger>
-          <TabsTrigger value="allocation" className="flex items-center gap-1 sm:gap-2 px-2 sm:px-3">
+          <TabsTrigger value="allocation" className="flex items-center gap-2 px-2 sm:px-3">
             <BarChart3 className="h-4 w-4 shrink-0" />
             <span className="hidden sm:inline">Allocation</span>
-            <span className="sm:hidden">Alloc</span>
           </TabsTrigger>
-          <TabsTrigger value="accounts" className="flex items-center gap-1 sm:gap-2 px-2 sm:px-3">
+          <TabsTrigger value="accounts" className="flex items-center gap-2 px-2 sm:px-3">
             <Building2 className="h-4 w-4 shrink-0" />
             <span className="hidden sm:inline">Accounts ({portfolio?.accounts?.length || 0})</span>
-            <span className="sm:hidden">Acct</span>
           </TabsTrigger>
           <TabsTrigger
             value="transactions"
-            className="flex items-center gap-1 sm:gap-2 px-2 sm:px-3"
+            className="flex items-center gap-2 px-2 sm:px-3"
             onClick={() => {
               if (transactions.length === 0) {
                 fetchTransactions(1, true)
@@ -1780,17 +1778,14 @@ export default function PortfolioDetailPage() {
           >
             <History className="h-4 w-4 shrink-0" />
             <span className="hidden sm:inline">Transactions</span>
-            <span className="sm:hidden">Trans</span>
           </TabsTrigger>
-          <TabsTrigger value="documents" className="flex items-center gap-1 sm:gap-2 px-2 sm:px-3">
+          <TabsTrigger value="documents" className="flex items-center gap-2 px-2 sm:px-3">
             <FileText className="h-4 w-4 shrink-0" />
             <span className="hidden sm:inline">Documents</span>
-            <span className="sm:hidden">Docs</span>
           </TabsTrigger>
-          <TabsTrigger value="tax" className="flex items-center gap-1 sm:gap-2 px-2 sm:px-3">
+          <TabsTrigger value="tax" className="flex items-center gap-2 px-2 sm:px-3">
             <Calculator className="h-4 w-4 shrink-0" />
             <span className="hidden sm:inline">Tax Reports</span>
-            <span className="sm:hidden">Tax</span>
           </TabsTrigger>
         </TabsList>
 
